@@ -392,9 +392,14 @@ class JMMakerClientProtocol(JMClientProtocol):
         if not self.client.offerlist:
             return
         self.offers_ready_loop.stop()
+        if self.client.fidelity_bond != None:
+            initdata = {"offerlist": self.client.offerlist,
+                "fidelitybond": self.client.fidelity_bond}
+        else:
+            initdata = {"offerlist": self.client.offerlist}
         d = self.callRemote(commands.JMSetup,
                             role="MAKER",
-                            initdata=json.dumps(self.client.offerlist))
+                            initdata=json.dumps(initdata))
         self.defaultCallbacks(d)
 
     @commands.JMSetupDone.responder

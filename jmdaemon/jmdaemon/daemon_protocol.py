@@ -13,6 +13,7 @@ from jmbase import (hextobin, is_hs_uri, get_tor_agent, JMHiddenService,
                     get_nontor_agent, BytesProducer, wrapped_urlparse,
                     bdict_sdict_convert, JMHTTPResource)
 from jmbase.commands import *
+import jmbitcoin as btc
 from twisted.protocols import amp
 from twisted.internet import reactor, ssl, task
 from twisted.internet.protocol import ServerFactory
@@ -33,6 +34,7 @@ from io import BytesIO
 import copy
 from functools import wraps
 from numbers import Integral
+import base64
 
 """Joinmarket application protocol control flow.
 For documentation on protocol (formats, message sequence) see
@@ -565,8 +567,14 @@ class JMDaemonServerProtocol(amp.AMP, OrderbookWatch):
         if self.role == "TAKER":
             self.mcc.pubmsg(COMMAND_PREFIX + "orderbook")
         elif self.role == "MAKER":
-            self.offerlist = json.loads(initdata)
-            self.mcc.announce_orders(self.offerlist)
+            initdata_json = json.loads(initdata)
+            assert "offerlist" in initdata_json
+            self.offerlist = initdata_json["offerlist"]
+            if "fidelitybond" in initdata_json:
+                self.fidelitybond = initdata_json["fidelitybond"]
+            else:
+                self.fidelitybond = None
+            self.mcc.announce_orders(self.offerlist, None, None, None)
         self.jm_state = 1
         return {'accepted': True}
 
@@ -655,7 +663,7 @@ class JMDaemonServerProtocol(amp.AMP, OrderbookWatch):
         if len(to_cancel) > 0:
             self.mcc.cancel_orders(to_cancel)
         if len(to_announce) > 0:
-            self.mcc.announce_orders(to_announce, None, None)
+            self.mcc.announce_orders(to_announce, None, None, None)
         return {"accepted": True}
 
     @JMIOAuth.responder
@@ -711,7 +719,16 @@ class JMDaemonServerProtocol(amp.AMP, OrderbookWatch):
     def on_orderbook_requested(self, nick, mc=None):
         """Dealt with by daemon, assuming offerlist is up to date
         """
-        self.mcc.announce_orders(self.offerlist, nick, mc)
+        if self.fidelitybond:
+            taker_nick = nick
+            maker_nick = self.mcc.nick
+            nick_msg = taker_nick + "|" + maker_nick
+            cert_priv = hextobin(self.fidelitybond["certificate-privkey"])
+            nick_sig = btc.ecdsa_sign(nick_msg, cert_priv)
+            nick_sig = base64.b64decode(nick_sig)
+            self.fidelitybond["nick-signature"] = nick_sig
+
+        self.mcc.announce_orders(self.offerlist, nick, self.fidelitybond, mc)
 
     @maker_only
     def on_order_fill(self, nick, oid, amount, taker_pk, commit):

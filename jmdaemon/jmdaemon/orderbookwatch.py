@@ -3,6 +3,8 @@
 import sqlite3
 import sys
 import threading
+import base64
+import struct
 from decimal import InvalidOperation, Decimal
 from numbers import Integral
 

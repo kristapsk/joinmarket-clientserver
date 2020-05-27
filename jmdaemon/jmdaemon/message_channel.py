@@ -3,12 +3,13 @@ import abc
 import base64
 import binascii
 import threading
+import struct
 from twisted.internet import reactor
 from jmdaemon import encrypt_encode, decode_decrypt, COMMAND_PREFIX,\
     NICK_HASH_LENGTH, NICK_MAX_ENCODED, plaintext_commands,\
     encrypted_commands, commitment_broadcast_list, offername_list,\
     fidelity_bond_cmd_list
-from jmbase.support import get_log
+from jmbase.support import get_log, hextobin
 from functools import wraps
 
 log = get_log()
@@ -285,12 +286,31 @@ class MessageChannelCollection(object):
                           "; cannot find on any message channel.")
             return
 
-    def announce_orders(self, orderlist, nick=None, new_mc=None):
+    @classmethod
+    def serialize_fidelity_bond_message(cls, fidelity_bond_proof):
+        nick_sig = fidelity_bond_proof["nick-signature"]
+        nick_sig = b"\xff"*(72 - len(nick_sig)) + nick_sig
+        cert_sig = hextobin(fidelity_bond_proof["certificate-signature"])
+        cert_sig = b"\xff"*(72 - len(cert_sig)) + cert_sig
+        fidelity_bond_data = struct.pack("<72s72s33sH33s32sII",
+            nick_sig,
+            cert_sig,
+            hextobin(fidelity_bond_proof["certificate-pubkey"]),
+            fidelity_bond_proof["certificate-expiry"],
+            hextobin(fidelity_bond_proof["utxo-pubkey"]),
+            hextobin(fidelity_bond_proof["txid"]),
+            fidelity_bond_proof["vout"],
+            fidelity_bond_proof["locktime"]
+        )
+        return base64.b64encode(fidelity_bond_data).decode("ascii")
+
+    def announce_orders(self, orderlist, nick, fidelity_bond_proof, new_mc):
         """Send orders defined in list orderlist either
         to the shared public channel (pit), on all
         message channels, if nick=None,
         or to an individual counterparty nick, as
         privmsg, on a specific mc.
+        Fidelity bonds can only be announced over privmsg, nick must be nonNone
         """
         order_keys = ['oid', 'minsize', 'maxsize', 'txfee', 'cjfee']
         orderlines = []
@@ -302,6 +322,7 @@ class MessageChannelCollection(object):
                 "Tried to announce orders on an unavailable message channel.")
             return
         if nick is None:
+            assert fidelity_bond_proof == None
             for mc in self.available_channels():
                 mc.announce_orders(orderlines)
         else:
@@ -311,6 +332,10 @@ class MessageChannelCollection(object):
             cmd = orderlist[0]['ordertype']
             msg = ' '.join(orderlines[0].split(' ')[1:])
             msg += ''.join(orderlines[1:])
+
+            if fidelity_bond_proof:
+                fidelity_bond_b64data = self.serialize_fidelity_bond_message(fidelity_bond_proof)
+                msg += (COMMAND_PREFIX + fidelity_bond_cmd_list[0] + " " + fidelity_bond_b64data)
             if new_mc:
                 self.prepare_privmsg(nick, cmd, msg, mc=new_mc)
             else:
