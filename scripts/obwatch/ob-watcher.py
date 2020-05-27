@@ -437,6 +437,7 @@ class ObIRCMessageChannel(IRCMessageChannel):
             _chunks = command.split(" ")
             try:
                 self.check_for_orders(nick, _chunks)
+                self.check_for_fidelity_bond(nick, _chunks)
             except:
                 pass
 

@@ -6,7 +6,8 @@ import threading
 from twisted.internet import reactor
 from jmdaemon import encrypt_encode, decode_decrypt, COMMAND_PREFIX,\
     NICK_HASH_LENGTH, NICK_MAX_ENCODED, plaintext_commands,\
-    encrypted_commands, commitment_broadcast_list, offername_list
+    encrypted_commands, commitment_broadcast_list, offername_list,\
+    fidelity_bond_cmd_list
 from jmbase.support import get_log
 from functools import wraps
 
@@ -563,7 +564,8 @@ class MessageChannelCollection(object):
     # orderbook watcher commands
     def register_orderbookwatch_callbacks(self,
                                           on_order_seen=None,
-                                          on_order_cancel=None):
+                                          on_order_cancel=None,
+                                          on_fidelity_bond_seen=None):
         """Special cases:
         on_order_seen: use it as a trigger for presence of nick.
         on_order_cancel: what happens if cancel/modify in one place
@@ -572,7 +574,7 @@ class MessageChannelCollection(object):
         self.on_order_seen = on_order_seen
         for mc in self.mchannels:
             mc.register_orderbookwatch_callbacks(self.on_order_seen_trigger,
-                                                 on_order_cancel)
+                                     on_order_cancel, on_fidelity_bond_seen)
 
     def on_orderbook_requested_trigger(self, nick, mc):
         """Update nicks_seen state to reflect presence of
@@ -647,6 +649,7 @@ class MessageChannel(object):
         # orderbook watch functions
         self.on_order_seen = None
         self.on_order_cancel = None
+        self.on_fidelity_bond_seen = None
         # taker functions
         self.on_error = None
         self.on_pubkey = None
@@ -730,9 +733,11 @@ class MessageChannel(object):
     # orderbook watcher commands
     def register_orderbookwatch_callbacks(self,
                                           on_order_seen=None,
-                                          on_order_cancel=None):
+                                          on_order_cancel=None,
+                                          on_fidelity_bond_seen=None):
         self.on_order_seen = on_order_seen
         self.on_order_cancel = on_order_cancel
+        self.on_fidelity_bond_seen = on_fidelity_bond_seen
 
     # taker commands
     def register_taker_callbacks(self,
@@ -809,6 +814,21 @@ class MessageChannel(object):
                 log.debug('Error parsing chunks, possibly malformed'
                           'commitment by other party. No user action required.')
                 log.debug("the chunks were: " + str(_chunks))
+            finally:
+                return True
+        return False
+
+    def check_for_fidelity_bond(self, nick, _chunks):
+        if _chunks[0] in fidelity_bond_cmd_list:
+            try:
+                fidelity_bond_b64data = _chunks[1]
+                if self.on_fidelity_bond_seen:
+                    self.on_fidelity_bond_seen(nick, _chunks[0], fidelity_bond_b64data)
+            except IndexError as e:
+                log.debug(e)
+                log.debug('index error parsing chunks, possibly malformed '
+                          'offer by other party. No user action required. '
+                          'Triggered by: ' + str(nick))
             finally:
                 return True
         return False
@@ -951,6 +971,8 @@ class MessageChannel(object):
             try:
                 # orderbook watch commands
                 if self.check_for_orders(nick, _chunks):
+                    pass
+                elif self.check_for_fidelity_bond(nick, _chunks):
                     pass
                 # taker commands
                 elif _chunks[0] == 'error':
