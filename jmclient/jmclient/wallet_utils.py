@@ -1,8 +1,9 @@
+import base64
+import binascii
 import json
 import os
-import sys
 import sqlite3
-import binascii
+import sys
 from datetime import datetime
 from calendar import timegm
 from optparse import OptionParser, IndentedHelpFormatter
@@ -51,6 +52,7 @@ The method is one of the following:
 (dumpprivkey) Export a single private key, specify an hd wallet path.
 (signmessage) Sign a message with the private key from an address in
     the wallet. Use with -H and specify an HD wallet path for the address.
+(signpsbt) Sign PSBT with JoinMarket wallet.
 (freeze) Freeze or un-freeze a specific utxo. Specify mixdepth with -m.
 (gettimelockaddress) Obtain a timelocked address. Argument is locktime value as yyyy-mm. For example `2021-03`.
 (addtxoutproof) Add a tx out proof as metadata to a burner transaction. Specify path with
@@ -1064,6 +1066,17 @@ def wallet_signmessage(wallet, hdpath, message):
     retval = "Signature: {}\nTo verify this in Bitcoin Core".format(sig)
     return retval + " use the RPC command 'verifymessage'"
 
+def wallet_signpsbt(wallet, psbt):
+    if not psbt:
+        return "Error: no PSBT specified"
+
+    signed_psbt_and_signresult, err = wallet.sign_psbt(
+        base64.b64decode(psbt.encode('ascii')), with_sign_result=True)
+    if err:
+        return "Failed to sign PSBT, quitting. Error message: " + err
+    signresult, signed_psbt = signed_psbt_and_signresult
+    return signed_psbt.to_base64()
+
 def display_utxos_for_disable_choice_default(wallet_service, utxos_enabled,
         utxos_disabled):
     """ CLI implementation of the callback required as described in
@@ -1503,6 +1516,11 @@ def wallet_tool_main(wallet_root_path):
             jmprint('Must provide message to sign', "error")
             sys.exit(EXIT_ARGERROR)
         return wallet_signmessage(wallet_service, options.hd_path, args[2])
+    elif method == "signpsbt":
+        if len(args) < 3:
+            jmprint('Must provide PSBT to sign', "error")
+            sys.exit(EXIT_ARGERROR)
+        return wallet_signpsbt(wallet_service, args[2])
     elif method == "freeze":
         return wallet_freezeutxo(wallet_service, options.mixdepth)
     elif method == "gettimelockaddress":
