@@ -1075,7 +1075,7 @@ def wallet_signpsbt(wallet, psbt):
     if err:
         return "Failed to sign PSBT, quitting. Error message: " + err
     signresult, signed_psbt = signed_psbt_and_signresult
-    return signed_psbt.to_base64()
+    return (signresult, signed_psbt.to_base64())
 
 def display_utxos_for_disable_choice_default(wallet_service, utxos_enabled,
         utxos_disabled):
@@ -1520,7 +1520,7 @@ def wallet_tool_main(wallet_root_path):
         if len(args) < 3:
             jmprint('Must provide PSBT to sign', "error")
             sys.exit(EXIT_ARGERROR)
-        return wallet_signpsbt(wallet_service, args[2])
+        return wallet_signpsbt(wallet_service, args[2])[1]
     elif method == "freeze":
         return wallet_freezeutxo(wallet_service, options.mixdepth)
     elif method == "gettimelockaddress":
