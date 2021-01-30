@@ -80,6 +80,7 @@ def test_sign_external_psbt(setup_psbt_wallet, walletseed, xpub,
         assert signresult.num_inputs_final == 3
     print(PSBTWalletMixin.human_readable_psbt(
         bitcoin.PartiallySignedTransaction.from_base64(signedpsbt)))
+    bitcoin.select_chain_params("bitcoin/regtest")
 
 def test_create_and_sign_psbt_with_legacy(setup_psbt_wallet):
     """ The purpose of this test is to check that we can create and
