@@ -503,6 +503,9 @@ class BitcoinCoreInterface(BlockchainInterface):
     def get_block_time(self, blockhash):
         return self._get_block_header_data(blockhash, 'time')
 
+    def get_block_hash(self, height):
+        return self._rpc("getblockhash", [height])
+
     def get_tx_merkle_branch(self, txid, blockhash=None):
         if not blockhash:
             tx = self._rpc("gettransaction", [txid])
