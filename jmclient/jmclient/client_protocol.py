@@ -681,11 +681,12 @@ class JMTakerClientProtocol(JMClientProtocol):
                 return {'accepted': True}
 
     @commands.JMOffers.responder
-    def on_JM_OFFERS(self, orderbook):
+    def on_JM_OFFERS(self, orderbook, fidelitybonds):
         self.orderbook = json.loads(orderbook)
+        fidelity_bonds_list = json.loads(fidelitybonds)
         #Removed for now, as judged too large, even for DEBUG:
         #jlog.debug("Got the orderbook: " + str(self.orderbook))
-        retval = self.client.initialize(self.orderbook)
+        retval = self.client.initialize(self.orderbook, fidelity_bonds_list)
         #format of retval is:
         #True, self.cjamount, commitment, revelation, self.filtered_orderbook)
         if not retval[0]:

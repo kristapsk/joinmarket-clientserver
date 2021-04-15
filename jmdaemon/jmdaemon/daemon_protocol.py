@@ -11,7 +11,7 @@ from .irc import IRCMessageChannel
 
 from jmbase import (hextobin, is_hs_uri, get_tor_agent, JMHiddenService,
                     get_nontor_agent, BytesProducer, wrapped_urlparse,
-                    bdict_sdict_convert, JMHTTPResource)
+                    bdict_sdict_convert, JMHTTPResource, bintohex)
 from jmbase.commands import *
 import jmbitcoin as btc
 from twisted.protocols import amp
@@ -600,10 +600,22 @@ class JMDaemonServerProtocol(amp.AMP, OrderbookWatch):
         This call is stateless."""
         rows = self.db.execute('SELECT * FROM orderbook;').fetchall()
         self.orderbook = [dict([(k, o[k]) for k in ORDER_KEYS]) for o in rows]
-        log.msg("About to send orderbook of size: " + str(len(self.orderbook)))
         string_orderbook = json.dumps(self.orderbook)
-        d = self.callRemote(JMOffers,
-                        orderbook=string_orderbook)
+
+        fbond_rows = self.db.execute("SELECT * FROM fidelitybonds;").fetchall()
+        FIDELITY_BOND_KEYS = ["counterparty", "txid", "vout", "utxopubkey", "locktime", "certexpiry"]
+        fidelitybonds = [
+            dict(
+                [(k, o[k] if type(o[k]) != bytes else bintohex(o[k])) for k in FIDELITY_BOND_KEYS]
+            )
+            for o in fbond_rows
+        ]
+        string_fidelitybonds = json.dumps(fidelitybonds)
+
+        log.msg("About to send orderbook (size=" + str(len(self.orderbook))
+            + " with fidelity bonds (size=" + str(len(fidelitybonds)))
+        d = self.callRemote(JMOffers, orderbook=string_orderbook,
+            fidelitybonds=string_fidelitybonds)
         self.defaultCallbacks(d)
         return {'accepted': True}
 

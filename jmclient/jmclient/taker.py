@@ -6,11 +6,11 @@ import random
 from twisted.internet import reactor, task
 
 import jmbitcoin as btc
-from jmclient.configure import jm_single, validate_address
-from jmbase import get_log, bintohex, hexbin
+from jmclient.configure import jm_single, validate_address, get_interest_rate
+from jmbase import get_log, bintohex, hexbin, hextobin
 from jmclient.support import (calc_cj_fee, weighted_order_choose, choose_orders,
                               choose_sweep_orders)
-from jmclient.wallet import estimate_tx_fee, compute_tx_locktime
+from jmclient.wallet import estimate_tx_fee, compute_tx_locktime, FidelityBondMixin
 from jmclient.podle import generate_podle, get_podle_commitments
 from jmclient.wallet_service import WalletService
 from .output import generate_podle_error_string
@@ -149,7 +149,7 @@ class Taker(object):
                 return
         self.honest_only = truefalse
 
-    def initialize(self, orderbook):
+    def initialize(self, orderbook, fidelity_bonds_info):
         """Once the daemon is active and has returned the current orderbook,
         select offers, re-initialize variables and prepare a commitment,
         then send it to the protocol to fill offers.
@@ -209,6 +209,42 @@ class Taker(object):
             self.maker_txfee_contributions = 0
             self.latest_tx = None
             self.txid = None
+
+        # calculate fidelity bond values and add them to orders
+        interest_rate = get_interest_rate()
+        blocks = jm_single().bc_interface.get_current_block_height()
+        mediantime = jm_single().bc_interface.get_best_block_median_time()
+        validated_bonds = (FidelityBondMixin.get_validated_timelocked_fidelity_bond_utxo(
+            hextobin(fb["txid"]), fb["vout"], hextobin(fb["utxopubkey"]), fb["locktime"],
+            fb["certexpiry"], blocks)
+            for fb in fidelity_bonds_info)
+        validated_fidelity_bond_data_with_dups = [(bond_data, utxo_data)
+            for bond_data, utxo_data in zip(fidelity_bonds_info, validated_bonds)
+            if utxo_data != None]
+        #check for duplicated utxos i.e. two or more makers using the same UTXO
+        # which is obviously not allowed, a fidelity bond must only be usable by one maker nick
+        bond_utxo_set = set()
+        validated_fidelity_bond_data = []
+        for bond in validated_fidelity_bond_data_with_dups:
+            utxo_str = bond[0]["txid"] + ":" + str(bond[0]["vout"])
+            if utxo_str not in bond_utxo_set:
+                validated_fidelity_bond_data.append(bond)
+            bond_utxo_set.add(utxo_str)
+        fidelity_bond_values = dict([(bond_data["counterparty"],
+            FidelityBondMixin.calculate_timelocked_fidelity_bond_value(
+                utxo_data["value"],
+                jm_single().bc_interface.get_block_time(
+                    jm_single().bc_interface.get_block_hash(
+                        blocks - utxo_data["confirms"] + 1
+                    )
+                ),
+                bond_data["locktime"],
+                mediantime,
+                interest_rate))
+            for bond_data, utxo_data in validated_fidelity_bond_data])
+        for offer in orderbook:
+            #having no fidelity bond is like having a zero value fidelity bond
+            offer["fidelity_bond_value"] = fidelity_bond_values.get(offer["counterparty"], 0)
 
         sweep = True if self.cjamount == 0 else False
         if not self.filter_orderbook(orderbook, sweep):
