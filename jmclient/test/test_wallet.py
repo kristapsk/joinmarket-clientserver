@@ -646,7 +646,7 @@ def test_timenumber_to_timestamp(setup_wallet, timenumber, timestamp):
     [1709251200, 50],
     [2366841600, 300],
     [1577836801, None], #not exactly midnight on first of month
-    [2629670400, None], #too far in future
+    [4133980800, None], #too far in future
     [1575158400, None] #before epoch
 ])
 def test_timestamp_to_timenumber(setup_wallet, timestamp, timenumber):
