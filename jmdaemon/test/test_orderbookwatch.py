@@ -7,6 +7,7 @@ from jmdaemon import IRCMessageChannel, MessageChannelCollection, fidelity_bond_
 from jmclient import get_irc_mchannels, load_test_config
 from jmdaemon.protocol import JM_VERSION, ORDER_KEYS
 from jmbase.support import hextobin
+from jmbitcoin.fidelity_bond import FidelityBondProof
 
 class DummyDaemon(object):
     def request_signature_verify(self, a, b, c, d, e,
@@ -246,8 +247,14 @@ def test_disconnect_leave():
         )
     ])
 def test_fidelity_bond_seen(valid, fidelity_bond_proof, maker_nick, taker_nick):
-
-    serialized = MessageChannelCollection.serialize_fidelity_bond_message(fidelity_bond_proof)
+    proof = FidelityBondProof(
+        maker_nick, taker_nick, hextobin(fidelity_bond_proof['certificate-pubkey']),
+        fidelity_bond_proof['certificate-expiry'],
+        hextobin(fidelity_bond_proof['certificate-signature']),
+        (hextobin(fidelity_bond_proof['txid']), fidelity_bond_proof['vout']),
+        hextobin(fidelity_bond_proof['utxo-pubkey']), fidelity_bond_proof['locktime']
+    )
+    serialized = proof._serialize_proof_msg(fidelity_bond_proof['nick-signature'])
 
     ob = get_ob()
     ob.msgchan.nick = taker_nick
@@ -308,7 +315,14 @@ def test_duplicate_fidelity_bond_rejected():
     ob = get_ob()
 
     fidelity_bond_proof1, maker_nick1, taker_nick1 = fidelity_bond_info[0]
-    serialized1 = MessageChannelCollection.serialize_fidelity_bond_message(fidelity_bond_proof1)
+    proof = FidelityBondProof(
+        maker_nick1, taker_nick1, hextobin(fidelity_bond_proof1['certificate-pubkey']),
+        fidelity_bond_proof1['certificate-expiry'],
+        hextobin(fidelity_bond_proof1['certificate-signature']),
+        (hextobin(fidelity_bond_proof1['txid']), fidelity_bond_proof1['vout']),
+        hextobin(fidelity_bond_proof1['utxo-pubkey']), fidelity_bond_proof1['locktime']
+    )
+    serialized1 = proof._serialize_proof_msg(fidelity_bond_proof1['nick-signature'])
     ob.msgchan.nick = taker_nick1
 
     ob.on_fidelity_bond_seen(maker_nick1, fidelity_bond_cmd_list[0], serialized1)
@@ -322,7 +336,14 @@ def test_duplicate_fidelity_bond_rejected():
 
     #show a different fidelity bond and check it does get accepted
     fidelity_bond_proof2, maker_nick2, taker_nick2 = fidelity_bond_info[1]
-    serialized2 = MessageChannelCollection.serialize_fidelity_bond_message(fidelity_bond_proof2)
+    proof2 = FidelityBondProof(
+        maker_nick1, taker_nick1, hextobin(fidelity_bond_proof2['certificate-pubkey']),
+        fidelity_bond_proof2['certificate-expiry'],
+        hextobin(fidelity_bond_proof2['certificate-signature']),
+        (hextobin(fidelity_bond_proof2['txid']), fidelity_bond_proof2['vout']),
+        hextobin(fidelity_bond_proof2['utxo-pubkey']), fidelity_bond_proof2['locktime']
+    )
+    serialized2 = proof2._serialize_proof_msg(fidelity_bond_proof2['nick-signature'])
     ob.msgchan.nick = taker_nick2
 
     ob.on_fidelity_bond_seen(maker_nick2, fidelity_bond_cmd_list[0], serialized2)

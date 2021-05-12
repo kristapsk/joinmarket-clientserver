@@ -63,8 +63,8 @@ class JMTestServerProtocol(JMBaseProtocol):
         return {'accepted': True}
 
     @JMSetup.responder
-    def on_JM_SETUP(self, role, initdata):
-        show_receipt("JMSETUP", role, initdata)
+    def on_JM_SETUP(self, role, offers, fidelity_bond):
+        show_receipt("JMSETUP", role, offers, fidelity_bond)
         d = self.callRemote(JMSetupDone)
         self.defaultCallbacks(d)
         return {'accepted': True}
@@ -156,7 +156,8 @@ class JMTestClientProtocol(JMBaseProtocol):
         show_receipt("JMUP")
         d = self.callRemote(JMSetup,
                             role="TAKER",
-                            initdata="none")
+                            offers="{}",
+                            fidelity_bond=b'')
         self.defaultCallbacks(d)
         return {'accepted': True}
 
@@ -177,7 +178,7 @@ class JMTestClientProtocol(JMBaseProtocol):
         return {'accepted': True}
 
     @JMOffers.responder
-    def on_JM_OFFERS(self, orderbook):
+    def on_JM_OFFERS(self, orderbook, fidelitybonds):
         show_receipt("JMOFFERS", orderbook)
         d = self.callRemote(JMFill,
                             amount=100,

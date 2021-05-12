@@ -7,19 +7,21 @@ import abc
 import base64
 from twisted.python.log import startLogging
 from optparse import OptionParser
-from jmbase import get_log, bintohex
+from jmbase import get_log
 from jmclient import (Maker, jm_single, load_program_config,
                       JMClientProtocolFactory, start_reactor, calc_cj_fee,
                       WalletService, add_base_options, SNICKERReceiver,
                       SNICKERClientProtocolFactory, FidelityBondMixin,
-                      get_interest_rate)
+                      get_interest_rate, fmt_utxo)
 from .wallet_utils import open_test_wallet_maybe, get_wallet_path
 from jmbase.support import EXIT_ARGERROR, EXIT_FAILURE, get_jm_version_str
 import jmbitcoin as btc
+from jmbitcoin.fidelity_bond import FidelityBond
 
 jlog = get_log()
 
 MAX_MIX_DEPTH = 5
+
 
 class YieldGenerator(Maker):
     """A maker for the purposes of generating a yield from held
@@ -152,19 +154,11 @@ class YieldGeneratorBasic(YieldGenerator):
         cert_pub = btc.privkey_to_pubkey(cert_priv)
         cert_msg = b"fidelity-bond-cert|" + cert_pub + b"|" + str(cert_expiry).encode("ascii")
         cert_sig = base64.b64decode(btc.ecdsa_sign(cert_msg, utxo_priv))
-        fidelity_bond_proof = {
-            "certificate-signature": bintohex(cert_sig),
-            "certificate-pubkey": bintohex(cert_pub),
-            "certificate-expiry": cert_expiry,
-            "certificate-privkey": bintohex(cert_priv),
-            "utxo-pubkey": bintohex(utxo_pub),
-            "txid": bintohex(max_valued_bond[0][0]),
-            "vout": max_valued_bond[0][1],
-            "locktime": locktime
-        }
-        jlog.info("Announcing fidelity bond coin " + fidelity_bond_proof["txid"] + ":"
-            + str(fidelity_bond_proof["vout"]))
-        return fidelity_bond_proof
+        utxo = (max_valued_bond[0][0], max_valued_bond[0][1])
+        fidelity_bond = FidelityBond(utxo, utxo_pub, locktime, cert_expiry,
+                                     cert_priv, cert_pub, cert_sig)
+        jlog.info("Announcing fidelity bond coin {}".format(fmt_utxo(utxo)))
+        return fidelity_bond
 
     def oid_to_order(self, offer, amount):
         total_amount = amount + offer["txfee"]

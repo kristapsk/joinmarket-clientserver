@@ -392,14 +392,14 @@ class JMMakerClientProtocol(JMClientProtocol):
         if not self.client.offerlist:
             return
         self.offers_ready_loop.stop()
-        if self.client.fidelity_bond != None:
-            initdata = {"offerlist": self.client.offerlist,
-                "fidelitybond": self.client.fidelity_bond}
+        if self.client.fidelity_bond:
+            fidelity_bond_data = self.client.fidelity_bond.serialize()
         else:
-            initdata = {"offerlist": self.client.offerlist}
+            fidelity_bond_data = b''
         d = self.callRemote(commands.JMSetup,
                             role="MAKER",
-                            initdata=json.dumps(initdata))
+                            offers=json.dumps(self.client.offerlist),
+                            fidelity_bond=fidelity_bond_data)
         self.defaultCallbacks(d)
 
     @commands.JMSetupDone.responder
@@ -632,7 +632,8 @@ class JMTakerClientProtocol(JMClientProtocol):
     def on_JM_UP(self):
         d = self.callRemote(commands.JMSetup,
                             role="TAKER",
-                            initdata="none")
+                            offers="{}",
+                            fidelity_bond=b'')
         self.defaultCallbacks(d)
         return {'accepted': True}
 

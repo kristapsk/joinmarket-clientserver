@@ -286,25 +286,7 @@ class MessageChannelCollection(object):
                           "; cannot find on any message channel.")
             return
 
-    @classmethod
-    def serialize_fidelity_bond_message(cls, fidelity_bond_proof):
-        nick_sig = fidelity_bond_proof["nick-signature"]
-        nick_sig = b"\xff"*(72 - len(nick_sig)) + nick_sig
-        cert_sig = hextobin(fidelity_bond_proof["certificate-signature"])
-        cert_sig = b"\xff"*(72 - len(cert_sig)) + cert_sig
-        fidelity_bond_data = struct.pack("<72s72s33sH33s32sII",
-            nick_sig,
-            cert_sig,
-            hextobin(fidelity_bond_proof["certificate-pubkey"]),
-            fidelity_bond_proof["certificate-expiry"],
-            hextobin(fidelity_bond_proof["utxo-pubkey"]),
-            hextobin(fidelity_bond_proof["txid"]),
-            fidelity_bond_proof["vout"],
-            fidelity_bond_proof["locktime"]
-        )
-        return base64.b64encode(fidelity_bond_data).decode("ascii")
-
-    def announce_orders(self, orderlist, nick, fidelity_bond_proof, new_mc):
+    def announce_orders(self, orderlist, nick, fidelity_bond_proof_msg, new_mc):
         """Send orders defined in list orderlist either
         to the shared public channel (pit), on all
         message channels, if nick=None,
@@ -322,7 +304,7 @@ class MessageChannelCollection(object):
                 "Tried to announce orders on an unavailable message channel.")
             return
         if nick is None:
-            assert fidelity_bond_proof == None
+            assert fidelity_bond_proof_msg is None
             for mc in self.available_channels():
                 mc.announce_orders(orderlines)
         else:
@@ -333,9 +315,9 @@ class MessageChannelCollection(object):
             msg = ' '.join(orderlines[0].split(' ')[1:])
             msg += ''.join(orderlines[1:])
 
-            if fidelity_bond_proof:
-                fidelity_bond_b64data = self.serialize_fidelity_bond_message(fidelity_bond_proof)
-                msg += (COMMAND_PREFIX + fidelity_bond_cmd_list[0] + " " + fidelity_bond_b64data)
+            if fidelity_bond_proof_msg:
+                msg += (COMMAND_PREFIX + fidelity_bond_cmd_list[0] + " " +
+                        fidelity_bond_proof_msg)
             if new_mc:
                 self.prepare_privmsg(nick, cmd, msg, mc=new_mc)
             else:
@@ -846,9 +828,9 @@ class MessageChannel(object):
     def check_for_fidelity_bond(self, nick, _chunks):
         if _chunks[0] in fidelity_bond_cmd_list:
             try:
-                fidelity_bond_b64data = _chunks[1]
+                fidelity_bond_proof_msg = _chunks[1]
                 if self.on_fidelity_bond_seen:
-                    self.on_fidelity_bond_seen(nick, _chunks[0], fidelity_bond_b64data)
+                    self.on_fidelity_bond_seen(nick, _chunks[0], fidelity_bond_proof_msg)
             except IndexError as e:
                 log.debug(e)
                 log.debug('index error parsing chunks, possibly malformed '

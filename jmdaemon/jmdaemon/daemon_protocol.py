@@ -13,7 +13,7 @@ from jmbase import (hextobin, is_hs_uri, get_tor_agent, JMHiddenService,
                     get_nontor_agent, BytesProducer, wrapped_urlparse,
                     bdict_sdict_convert, JMHTTPResource, bintohex)
 from jmbase.commands import *
-import jmbitcoin as btc
+from jmbitcoin.fidelity_bond import FidelityBond
 from twisted.protocols import amp
 from twisted.internet import reactor, ssl, task
 from twisted.internet.protocol import ServerFactory
@@ -34,7 +34,6 @@ from io import BytesIO
 import copy
 from functools import wraps
 from numbers import Integral
-import base64
 
 """Joinmarket application protocol control flow.
 For documentation on protocol (formats, message sequence) see
@@ -476,6 +475,7 @@ class JMDaemonServerProtocol(amp.AMP, OrderbookWatch):
         self.crypto_boxes = {}
         self.sig_lock = threading.Lock()
         self.active_orders = {}
+        self.fidelity_bond = None
 
     def checkClientResponse(self, response):
         """A generic check of client acceptance; any failure
@@ -553,7 +553,7 @@ class JMDaemonServerProtocol(amp.AMP, OrderbookWatch):
         return {'accepted': True}
 
     @JMSetup.responder
-    def on_JM_SETUP(self, role, initdata):
+    def on_JM_SETUP(self, role, offers, fidelity_bond):
         assert self.jm_state == 0
         self.role = role
         self.crypto_boxes = {}
@@ -567,13 +567,9 @@ class JMDaemonServerProtocol(amp.AMP, OrderbookWatch):
         if self.role == "TAKER":
             self.mcc.pubmsg(COMMAND_PREFIX + "orderbook")
         elif self.role == "MAKER":
-            initdata_json = json.loads(initdata)
-            assert "offerlist" in initdata_json
-            self.offerlist = initdata_json["offerlist"]
-            if "fidelitybond" in initdata_json:
-                self.fidelitybond = initdata_json["fidelitybond"]
-            else:
-                self.fidelitybond = None
+            self.offerlist = json.loads(offers)
+            if fidelity_bond:
+                self.fidelity_bond = FidelityBond.deserialize(fidelity_bond)
             self.mcc.announce_orders(self.offerlist, None, None, None)
         self.jm_state = 1
         return {'accepted': True}
@@ -731,16 +727,15 @@ class JMDaemonServerProtocol(amp.AMP, OrderbookWatch):
     def on_orderbook_requested(self, nick, mc=None):
         """Dealt with by daemon, assuming offerlist is up to date
         """
-        if self.fidelitybond:
+        if self.fidelity_bond:
             taker_nick = nick
             maker_nick = self.mcc.nick
-            nick_msg = taker_nick + "|" + maker_nick
-            cert_priv = hextobin(self.fidelitybond["certificate-privkey"])
-            nick_sig = btc.ecdsa_sign(nick_msg, cert_priv)
-            nick_sig = base64.b64decode(nick_sig)
-            self.fidelitybond["nick-signature"] = nick_sig
+            proof = self.fidelity_bond.create_proof(maker_nick, taker_nick)
+            proof_msg = proof.create_proof_msg(self.fidelity_bond.cert_privkey)
+        else:
+            proof_msg = None
 
-        self.mcc.announce_orders(self.offerlist, nick, self.fidelitybond, mc)
+        self.mcc.announce_orders(self.offerlist, nick, proof_msg, mc)
 
     @maker_only
     def on_order_fill(self, nick, oid, amount, taker_pk, commit):
@@ -1043,6 +1038,7 @@ class JMDaemonServerProtocol(amp.AMP, OrderbookWatch):
         log.msg("Message channels being shutdown by daemon")
         if self.mcc:
             self.mcc.shutdown()
+
 
 class JMDaemonServerProtocolFactory(ServerFactory):
     protocol = JMDaemonServerProtocol
