@@ -57,7 +57,8 @@ list of options.
 ## How to use fidelity bonds as a yield-generator
 
 You need to create a fidelity bond wallet and run the yield-generator script on it. The yield
-generator will automatically announce the most valuable fidelity bond in its wallet.
+generator will automatically announce the most valuable fidelity bond in its wallet. Fidelity bonds
+are only supported for native segwit wallets.
 
 ### Creating a JoinMarket wallet which supports fidelity bonds
 
@@ -73,7 +74,7 @@ will offer an option to make the wallet support fidelity bonds.
     Would you like this wallet to support fidelity bonds? write 'n' if you don't know what this is (y/n): y
     Write down this wallet recovery mnemonic
 
-    evidence initial knee image inspire plug dad midnight blast awkward clean between
+    use amateur twelve unfair weekend file canal frog cotton play renew illegal
 
     Generated wallet OK
 
@@ -84,7 +85,7 @@ creation date is also useful as it can help with rescanning.
 
 #### Adding fidelity bonds to an existing wallet
 
-This can be done by using the `recover` method:
+On any **native segwit** wallet this can be done by using the `recover` method:
 
     (jmvenv) $ python3 wallet-tool.py recover
 
@@ -108,11 +109,12 @@ fidelity bonds in it.
 
 This example creates an address which locks any coins sent to it until April 2020.
 
-    (jmvenv) $ python3 wallet-tool.py testfidelity.jmdat gettimelockaddress 2020-4
+    (jmvenv) $ python3 wallet-tool.py testfidelity.jmdat gettimelockaddress 2025-1
     Enter wallet decryption passphrase: 
-    path = m/49'/1'/0'/2/3:1585699200
-    Coins sent to this address will be not be spendable until April 2020. Full date: 2020-04-01 00:00:00
-    bcrt1qrc2qu3m2l2spayu5kr0k0rnn9xgjz46zsxmruh87a3h3f5zmnkaqlfx7v5
+    path = m/84'/1'/0'/2/0:1748736000
+    Coins sent to this address will be not be spendable until June 2025. Full date: 2025-06-01 00:00:00
+    bcrt1qvcjcggpcw2rzk4sks94r3nxj5xhgkqm4p9h54c7mtr695se27efqqxnu0k
+
 
 If coins are sent to these addresses they will appear in the usual `wallet-tool.py`
 display:
@@ -120,21 +122,24 @@ display:
     (jmvenv) $ python3 wallet-tool.py -m 0 testfidelity.jmdat
     Enter wallet decryption passphrase: 
     JM wallet
-    mixdepth    0   fbonds-mpk-tpubDDCbCPdf5wJVGYWB4mZr3E3Lys4NBcEKysrrUrLfhG6sekmrvs6KZNe4i5p5z3FyfwRmKMqB9NWEcEUiTS4LwqfrKPQzhKj6aLihu2EejaU
-    external addresses  m/49'/1'/0'/0   tpubDEGdmPwmQRcZmGKhaudjch9Fgw4J5yP4bYw5B8LoSDkMdmhBxM4ndEQXHK4r1TPexGjLidxdpeEzsJcdXEe7khWToxCZuN6JiLzvUoHAki2
-    m/49'/1'/0'/0/0         2N8jHuQaApgFtQ8UKxKbREAvNxKn4BGX4x2 0.00000000  new
-    m/49'/1'/0'/0/1         2Mx5CwDoNcuCT38EDmgenQxv9skHbZfXFdo 0.00000000  new
-    m/49'/1'/0'/0/2         2N1tNTTwNyucGGmfDWNVk3AUi3i5S8jVKqn 0.00000000  new
-    m/49'/1'/0'/0/3         2N8eBEU5wpWb6kS1gvbRgewtxsmXsMkShV6 0.00000000  new
-    m/49'/1'/0'/0/4         2MuHgeSgMsvkcn6aGNW2uk2UXP3xVVnkfh2 0.00000000  new
-    m/49'/1'/0'/0/5         2NA8d8um5KmBNNR8dadhbEDYGiTJPFCdjMB 0.00000000  new
+    mixdepth    0   fbonds-mpk-tpubDCv7SSisuV4AqNgRqHcXFAeCjV9Z5SPZgSVFjzydEZrS5Jg1uCkv4wGfMZc3wEaiC2hkEfbD753u4R6Shpgj8bR1kuKnEciB522kSpQ3j1v
+    external addresses  m/84'/1'/0'/0   tpubDEdbDAFbNCXXN54M2qgzHBJYxkHK9hoeisyRsC2gC3WZuxziU5RkcJWgpw7nJqugPx26Ui9c2AqCy9gwZpgTtL1GW1TuPtKRX2SdrrjBY2W
+    m/84'/1'/0'/0/0         bcrt1qwmj5yht2xxr3juxczt453uqjltc3xdyklkjnjt    2.00000000  used
+    m/84'/1'/0'/0/1         bcrt1q99nzc6s8fh37rjju8gfws4dcfhrpcfz0jst829    0.00000000  new
+    m/84'/1'/0'/0/2         bcrt1ql3fxzq2ueyhm8kwy7du6nsv7fgpvujupd2emms    0.00000000  new
+    m/84'/1'/0'/0/3         bcrt1qgxr5mh8v4dj8kuqv98ckjzqdmzd4xjcn539nc6    0.00000000  new
+    m/84'/1'/0'/0/4         bcrt1qhyhwzkh60p26pk2v008ejqhcl8g70h5vuw2fn6    0.00000000  new
+    m/84'/1'/0'/0/5         bcrt1q9xuzrqql028wpj3933zyny6geg2u75rhaygv6z    0.00000000  new
+    m/84'/1'/0'/0/6         bcrt1q8w7ewzl4q8mwxx7erf7pjq36z5g088jxzqjdcn    0.00000000  new
+    Balance:    2.00000000
+    internal addresses  m/84'/1'/0'/1
     Balance:    0.00000000
-    internal addresses  m/49'/1'/0'/1   
+    internal addresses  m/84'/1'/0'/2   tpubDEdbDAFbNCXXSFfUKS5QAaxN9toxv8pFSn3TxRdhEij46wj88RCch7ZBA2fgqsocD7MZqowVAdm6LyYumKuKZbzT4V2CfudwDicrMnqqbjC
+    m/84'/1'/0'/2/0:1748736000  bcrt1qvcjcggpcw2rzk4sks94r3nxj5xhgkqm4p9h54c7mtr695se27efqqxnu0k    2.00000000  2025-06-01 [LOCKED]
+    Balance:    2.00000000
+    internal addresses  m/84'/1'/0'/3   tpubDEdbDAFbNCXXUpShWMdtPMDcAogMyZJVAzMMn3wM9rC364sdeUuFMS7ZmdjoMbkf14jeK56uy95UBR2SA9AFFeoVv4j4CqMeaq1tcuBVkZe
     Balance:    0.00000000
-    internal addresses  m/49'/1'/0'/2   tpubDEGdmPwmQRcZrzjRmUFqXXyLdRedwxCWQviAFqDe6sXJeZzRNTwmwqMfxN6Ka3v7hEebstrU5kqUNoHsFKaA3RoB2vopL6kLHVo1EQq6USw
-    m/49'/1'/0'/2/0:1585699200  bcrt1qrc2qu3m2l2spayu5kr0k0rnn9xgjz46zsxmruh87a3h3f5zmnkaqlfx7v5    0.15000000  2020-04-01 [LOCKED]
-    Balance:    0.15000000
-    Balance for mixdepth 0: 0.15000000
+    Balance for mixdepth 0: 4.00000000
 
 #### Spending time-locked coins
 
@@ -184,7 +189,7 @@ At any time you can use the orderbook watcher script to see your own fidelity bo
 Consider also the [warning on the bitcoin wiki page on timelocks](https://en.bitcoin.it/wiki/Timelock#Far-future_locks).
 
 At the time of writing fidelity bonds are not deployed yet in the wild, but I would recommend locking
-as many coins are you're comfortable with for a period of between 6 months and 2 years. Perhaps at
+as many coins as you are comfortable with for a period of between 6 months and 2 years. Perhaps at
 the very start lock for only 1 month or 2 months(?) It's a marketplace and the rules are known to
 all, so ultimately you'll have to make your own decision.
 
@@ -215,24 +220,24 @@ mixdepth will be shown.
     User data location: .
     Enter wallet decryption passphrase: 
     JM wallet
-    mixdepth    0   fbonds-mpk-tpubDDCbCPdf5wJVGYWB4mZr3E3Lys4NBcEKysrrUrLfhG6sekmrvs6KZNe4i5p5z3FyfwRmKMqB9NWEcEUiTS4LwqfrKPQzhKj6aLihu2EejaU
-    external addresses  m/49'/1'/0'/0   tpubDEGdmPwmQRcZmGKhaudjch9Fgw4J5yP4bYw5B8LoSDkMdmhBxM4ndEQXHK4r1TPexGjLidxdpeEzsJcdXEe7khWToxCZuN6JiLzvUoHAki2
-    m/49'/1'/0'/0/0         2N8jHuQaApgFtQ8UKxKbREAvNxKn4BGX4x2 0.00000000  used
-    m/49'/1'/0'/0/1         2Mx5CwDoNcuCT38EDmgenQxv9skHbZfXFdo 0.00000000  new
-    m/49'/1'/0'/0/2         2N1tNTTwNyucGGmfDWNVk3AUi3i5S8jVKqn 0.00000000  new
-    m/49'/1'/0'/0/3         2N8eBEU5wpWb6kS1gvbRgewtxsmXsMkShV6 0.00000000  new
-    m/49'/1'/0'/0/4         2MuHgeSgMsvkcn6aGNW2uk2UXP3xVVnkfh2 0.00000000  new
-    m/49'/1'/0'/0/5         2NA8d8um5KmBNNR8dadhbEDYGiTJPFCdjMB 0.00000000  new
-    m/49'/1'/0'/0/6         2NG76BAHPccfyy6sH68EHrB9QJBycx3FKb6 0.00000000  new
-    Balance:    0.25000000
-    internal addresses  m/49'/1'/0'/1
+    mixdepth    0   fbonds-mpk-tpubDCv7SSisuV4AqNgRqHcXFAeCjV9Z5SPZgSVFjzydEZrS5Jg1uCkv4wGfMZc3wEaiC2hkEfbD753u4R6Shpgj8bR1kuKnEciB522kSpQ3j1v
+    external addresses  m/84'/1'/0'/0   tpubDEdbDAFbNCXXN54M2qgzHBJYxkHK9hoeisyRsC2gC3WZuxziU5RkcJWgpw7nJqugPx26Ui9c2AqCy9gwZpgTtL1GW1TuPtKRX2SdrrjBY2W
+    m/84'/1'/0'/0/0         bcrt1qwmj5yht2xxr3juxczt453uqjltc3xdyklkjnjt    2.00000000  used
+    m/84'/1'/0'/0/1         bcrt1q99nzc6s8fh37rjju8gfws4dcfhrpcfz0jst829    0.00000000  new
+    m/84'/1'/0'/0/2         bcrt1ql3fxzq2ueyhm8kwy7du6nsv7fgpvujupd2emms    0.00000000  new
+    m/84'/1'/0'/0/3         bcrt1qgxr5mh8v4dj8kuqv98ckjzqdmzd4xjcn539nc6    0.00000000  new
+    m/84'/1'/0'/0/4         bcrt1qhyhwzkh60p26pk2v008ejqhcl8g70h5vuw2fn6    0.00000000  new
+    m/84'/1'/0'/0/5         bcrt1q9xuzrqql028wpj3933zyny6geg2u75rhaygv6z    0.00000000  new
+    m/84'/1'/0'/0/6         bcrt1q8w7ewzl4q8mwxx7erf7pjq36z5g088jxzqjdcn    0.00000000  new
+    Balance:    2.00000000
+    internal addresses  m/84'/1'/0'/1
     Balance:    0.00000000
-    internal addresses  m/49'/1'/0'/2   tpubDEGdmPwmQRcZrzjRmUFqXXyLdRedwxCWQviAFqDe6sXJeZzRNTwmwqMfxN6Ka3v7hEebstrU5kqUNoHsFKaA3RoB2vopL6kLHVo1EQq6USw
-    m/49'/1'/0'/0/3:1585699200  bcrt1qrc2qu3m2l2spayu5kr0k0rnn9xgjz46zsxmruh87a3h3f5zmnkaqlfx7v5    0.15000000  2020-04-01 [UNLOCKED]
-    Balance:    0.15000000
-    internal addresses  m/49'/1'/0'/3   tpubDEGdmPwmQRcZuX3uNrCouu5bRgp2GJcoQTvhkFAJMTA3yxhKmQyeGwecbnkms4DYmBhCJn2fGTuejTe3g8oyJW3qKcfB4b3Swj2hDk1h4Y2
+    internal addresses  m/84'/1'/0'/2   tpubDEdbDAFbNCXXSFfUKS5QAaxN9toxv8pFSn3TxRdhEij46wj88RCch7ZBA2fgqsocD7MZqowVAdm6LyYumKuKZbzT4V2CfudwDicrMnqqbjC
+    m/84'/1'/0'/2/0:1748736000  bcrt1qvcjcggpcw2rzk4sks94r3nxj5xhgkqm4p9h54c7mtr695se27efqqxnu0k    2.00000000  2025-06-01 [LOCKED]
+    Balance:    2.00000000
+    internal addresses  m/84'/1'/0'/3   tpubDEdbDAFbNCXXUpShWMdtPMDcAogMyZJVAzMMn3wM9rC364sdeUuFMS7ZmdjoMbkf14jeK56uy95UBR2SA9AFFeoVv4j4CqMeaq1tcuBVkZe
     Balance:    0.00000000
-    Balance for mixdepth 0: 0.15000000
+    Balance for mixdepth 0: 4.00000000
 
 ### BIP32 Paths
 
