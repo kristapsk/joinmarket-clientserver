@@ -7,7 +7,7 @@ from decimal import InvalidOperation, Decimal
 from numbers import Integral
 
 from jmdaemon.protocol import JM_VERSION
-from jmbitcoin.fidelity_bond import FidelityBondProof
+from jmdaemon import fidelity_bond_sanity_check
 from jmbase.support import get_log, joinmarket_alert, DUST_THRESHOLD
 log = get_log()
 
@@ -42,8 +42,7 @@ class OrderbookWatch(object):
                             "oid INTEGER, ordertype TEXT, minsize INTEGER, "
                             "maxsize INTEGER, txfee INTEGER, cjfee TEXT);")
             self.db.execute("CREATE TABLE fidelitybonds(counterparty TEXT, "
-                "txid BLOB, vout INTEGER, utxopubkey BLOB,"
-                " locktime INTEGER, certexpiry INTEGER);");
+                "takernick TEXT, proof TEXT);");
         finally:
             self.dblock.release()
 
@@ -140,22 +139,16 @@ class OrderbookWatch(object):
     def on_fidelity_bond_seen(self, nick, bond_type, fidelity_bond_proof_msg):
         taker_nick = self.msgchan.nick
         maker_nick = nick
-        try:
-            proof = FidelityBondProof.verify_proof_msg(maker_nick, taker_nick,
-                                                       fidelity_bond_proof_msg)
-        except Exception as e:
+        if not fidelity_bond_sanity_check.fidelity_bond_sanity_check(fidelity_bond_proof_msg):
             log.debug("Failed to verify fidelity bond for {}, skipping. Error: {}"
                       .format(maker_nick, e))
             return
-
         try:
             self.dblock.acquire(True)
             self.db.execute("DELETE FROM fidelitybonds WHERE counterparty=?;",
                             (nick, ))
-            self.db.execute(
-                "INSERT INTO fidelitybonds VALUES(?, ?, ?, ?, ?, ?);",
-                (nick, proof.utxo[0], proof.utxo[1], proof.utxo_pub,
-                 proof.locktime, proof.cert_expiry))
+            self.db.execute("INSERT INTO fidelitybonds VALUES(?, ?, ?);",
+                nick, taker_nick, fidelity_bond_proof_msg)
         finally:
             self.dblock.release()
 

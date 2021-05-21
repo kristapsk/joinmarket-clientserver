@@ -2,7 +2,7 @@ import struct
 import base64
 import json
 from jmbitcoin import ecdsa_sign, ecdsa_verify
-
+from jmdaemon import import fidelity_bond_sanity_check
 
 class FidelityBondProofVerificationError(Exception):
     pass
@@ -115,10 +115,9 @@ class FidelityBondProof:
 
     @classmethod
     def verify_proof_msg(cls, maker_nick, taker_nick, data):
-        decoded_data = base64.b64decode(data)
-
-        if len(decoded_data) != 252:
+        if not fidelity_bond_sanity_check.fidelity_bond_sanity_check(data):
             raise FidelityBondProofVerificationError('invalid data length')
+        decoded_data = base64.b64decode(data)
 
         unpacked_data = struct.unpack(cls.SER_STUCT_FMT, decoded_data)
         signature = unpacked_data[0][unpacked_data[0].index(b'\x30'):]
