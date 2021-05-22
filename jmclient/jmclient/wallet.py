@@ -2404,10 +2404,10 @@ class FidelityBondMixin(object):
         return utxo_value*utxo_value*a*a
 
     @classmethod
-    def get_validated_timelocked_fidelity_bond_utxo(cls, txid, vout, utxo_pubkey, locktime,
+    def get_validated_timelocked_fidelity_bond_utxo(cls, utxo, utxo_pubkey, locktime,
             cert_expiry, current_block_height):
 
-        utxo_data = jm_single().bc_interface.query_utxo_set((txid, vout), includeconf=True)
+        utxo_data = jm_single().bc_interface.query_utxo_set(utxo, includeconf=True)
         if utxo_data[0] == None:
             return None
         if utxo_data[0]["confirms"] <= 0:

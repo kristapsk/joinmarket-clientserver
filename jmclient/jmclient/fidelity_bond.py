@@ -4,9 +4,6 @@ import json
 from jmbitcoin import ecdsa_sign, ecdsa_verify
 from jmdaemon import import fidelity_bond_sanity_check
 
-class FidelityBondProofVerificationError(Exception):
-    pass
-
 
 def assert_is_utxo(utxo):
     assert len(utxo) == 2
@@ -114,9 +111,9 @@ class FidelityBondProof:
         return ecdsa_verify(message, base64.b64encode(signature), pubkey)
 
     @classmethod
-    def verify_proof_msg(cls, maker_nick, taker_nick, data):
+    def parse_and_verify_proof_msg(cls, maker_nick, taker_nick, data):
         if not fidelity_bond_sanity_check.fidelity_bond_sanity_check(data):
-            raise FidelityBondProofVerificationError('invalid data length')
+            return None
         decoded_data = base64.b64decode(data)
 
         unpacked_data = struct.unpack(cls.SER_STUCT_FMT, decoded_data)
@@ -128,8 +125,8 @@ class FidelityBondProof:
         cert_msg = get_cert_msg(proof.cert_pub, proof.cert_expiry)
 
         if not cls._verify_signature(proof.nick_msg, signature, proof.cert_pub):
-            raise FidelityBondProofVerificationError('invalid nick signature')
+            return None
         if not cls._verify_signature(cert_msg, proof.cert_sig, proof.utxo_pub):
-            raise FidelityBondProofVerificationError('invalid cert signature')
+            return None
 
         return proof

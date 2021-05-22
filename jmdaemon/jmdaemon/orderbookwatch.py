@@ -148,7 +148,7 @@ class OrderbookWatch(object):
             self.db.execute("DELETE FROM fidelitybonds WHERE counterparty=?;",
                             (nick, ))
             self.db.execute("INSERT INTO fidelitybonds VALUES(?, ?, ?);",
-                nick, taker_nick, fidelity_bond_proof_msg)
+                (nick, taker_nick, fidelity_bond_proof_msg))
         finally:
             self.dblock.release()
 

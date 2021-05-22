@@ -25,6 +25,7 @@ if sys.version_info < (3, 7):
 from jmbase.support import EXIT_FAILURE
 from jmbase import bintohex
 from jmclient import FidelityBondMixin, get_interest_rate
+from jmclient.fidelity_bond import FidelityBondProof
 
 import sybil_attack_calculations as sybil
 
@@ -151,19 +152,22 @@ def get_fidelity_bond_data(taker):
     with taker.dblock:
         fbonds = taker.db.execute("SELECT * FROM fidelitybonds;").fetchall()
 
+    parsed_bonds = [FidelityBondProof.parse_and_verify_proof_msg(fb["counterparty"],
+        fb["takernick"], fb["proof"]) for fb in fbonds]
     blocks = jm_single().bc_interface.get_current_block_height()
-    validated_bonds = (FidelityBondMixin.get_validated_timelocked_fidelity_bond_utxo(
-        fb["txid"], fb["vout"], fb["utxopubkey"], fb["locktime"], fb["certexpiry"], blocks)
-        for fb in fbonds)
+    validated_bonds = [FidelityBondMixin.get_validated_timelocked_fidelity_bond_utxo(
+        pb.utxo, pb.utxo_pub, pb.locktime, pb.cert_expiry, blocks)
+        for pb in parsed_bonds if pb != None]
     fidelity_bond_data_with_dups = [(bond_data, utxo_data)
-        for bond_data, utxo_data in zip(fbonds, validated_bonds)
+        for bond_data, utxo_data in zip(parsed_bonds, validated_bonds)
         if utxo_data != None]
+
     #check for duplicated utxos i.e. two or more makers using the same UTXO
     # which is obviously not allowed, a fidelity bond must only be usable by one maker nick
     bond_utxo_set = set()
     fidelity_bond_data = []
     for bond in fidelity_bond_data_with_dups:
-        utxo_str = bond[0]["txid"] + b":" + str(bond[0]["vout"]).encode("ascii")
+        utxo_str = bond[0].utxo[0] + b":" + str(bond[0].utxo[1]).encode("ascii")
         if utxo_str not in bond_utxo_set:
             fidelity_bond_data.append(bond)
         bond_utxo_set.add(utxo_str)
@@ -181,7 +185,7 @@ def get_fidelity_bond_data(taker):
         FidelityBondMixin.calculate_timelocked_fidelity_bond_value(
             utxo_data["value"],
             conf_time,
-            bond_data["locktime"],
+            bond_data.locktime,
             mediantime,
             interest_rate)
         for (bond_data, utxo_data), conf_time in
@@ -315,7 +319,13 @@ class OrderbookPageRequestHeader(http.server.SimpleHTTPRequestHandler):
         if jm_single().bc_interface == None:
             with self.taker.dblock:
                 fbonds = self.taker.db.execute("SELECT * FROM fidelitybonds;").fetchall()
-            fidelity_bond_data = [(bond_data, None) for bond_data in fbonds]
+            fidelity_bond_data = [(
+                FidelityBondProof.parse_and_verify_proof_msg(
+                    fb["counterparty"],
+                    fb["takernick"],
+                    fb["proof"]),
+                None
+            ) for fb in fbonds]
             fidelity_bond_values = [-1]*len(fidelity_bond_data) #-1 means no data
             bond_outpoint_conf_times = [-1]*len(fidelity_bond_data)
             total_btc_committed_str = "unknown"
@@ -341,15 +351,15 @@ class OrderbookPageRequestHeader(http.server.SimpleHTTPRequestHandler):
                 conf_time_str = str(datetime.utcfromtimestamp(conf_time))
                 utxo_value_str = satoshi_to_unit(utxo_data["value"], None, btc_unit, 0)
             bondtable += ("<tr>"
-                + elem(bond_data["counterparty"])
-                + elem(bintohex(bond_data["txid"]) + ":" + str(bond_data["vout"]))
+                + elem(bond_data.maker_nick)
+                + elem(bintohex(bond_data.utxo[0]) + ":" + str(bond_data.utxo[1]))
                 + elem(bond_value_str)
-                + elem(datetime.utcfromtimestamp(bond_data["locktime"]).strftime("%Y-%m-%d"))
+                + elem(datetime.utcfromtimestamp(bond_data.locktime).strftime("%Y-%m-%d"))
                 + elem(utxo_value_str)
                 + elem(conf_time_str)
-                + elem(str(bond_data["certexpiry"]*RETARGET_INTERVAL))
-                + elem(bintohex(btc.mk_freeze_script(bond_data["utxopubkey"],
-                    bond_data["locktime"])))
+                + elem(str(bond_data.cert_expiry*RETARGET_INTERVAL))
+                + elem(bintohex(btc.mk_freeze_script(bond_data.utxo_pub,
+                    bond_data.locktime)))
                 + "</tr>"
             )
 
@@ -469,7 +479,6 @@ class OrderbookPageRequestHeader(http.server.SimpleHTTPRequestHandler):
             self.taker.dblock.release()
         if not rows:
             return 0, result
-        #print("len rows before filter: " + str(len(rows)))
         rows = [o for o in rows if o["ordertype"] in filtered_offername_list]
 
         if jm_single().bc_interface == None:
@@ -488,10 +497,17 @@ class OrderbookPageRequestHeader(http.server.SimpleHTTPRequestHandler):
                     row["bondvalue"] = "0"
                     continue
                 else:
-                    fb = fbond_data[0]
+                    parsed_bond = FidelityBondProof.parse_and_verify_proof_msg(
+                        fbond_data[0]["counterparty"],
+                        fbond_data[0]["takernick"],
+                        fbond_data[0]["proof"]
+                    )
+                    if parsed_bond == None:
+                        row["bondvalue"] = "0"
+                        continue
                     utxo_data = FidelityBondMixin.get_validated_timelocked_fidelity_bond_utxo(
-                        fb["txid"], fb["vout"], fb["utxopubkey"], fb["locktime"], fb["certexpiry"],
-                        blocks)
+                        parsed_bond.utxo, parsed_bond.utxo_pub, parsed_bond.locktime,
+                        parsed_bond.cert_expiry, blocks)
                     if utxo_data == None:
                         row["bondvalue"] = "0"
                         continue
@@ -502,7 +518,7 @@ class OrderbookPageRequestHeader(http.server.SimpleHTTPRequestHandler):
                                 blocks - utxo_data["confirms"] + 1
                             )
                         ),
-                        fb["locktime"],
+                        parsed_bond.locktime,
                         mediantime,
                         interest_rate)
                     row["bondvalue"] = satoshi_to_unit_power(bond_value, 2*unit_to_power[btc_unit])
