@@ -47,7 +47,7 @@ class JMSetup(JMCommand):
     """
     arguments = [(b'role', Unicode()),
                  (b'offers', Unicode()),
-                 (b'fidelity_bond', String())]
+                 (b'use_fidelity_bond', Boolean())]
 
 class JMMsgSignature(JMCommand):
     """A response to a request for a bitcoin signature
@@ -108,6 +108,11 @@ class JMAnnounceOffers(JMCommand):
     arguments = [(b'to_announce', Unicode()),
                  (b'to_cancel', Unicode()),
                  (b'offerlist', Unicode())]
+
+class JMFidelityBondProof(JMCommand):
+    """Send requested fidelity bond proof message"""
+    arguments = [(b'nick', Unicode()),
+                 (b'proof', Unicode())]
 
 class JMIOAuth(JMCommand):
     """Send contents of !ioauth message after
@@ -202,6 +207,11 @@ class JMSigReceived(JMCommand):
 
 """MAKER-specific commands
 """
+
+class JMFidelityBondProofRequest(JMCommand):
+    """MAKER wants to announce a fidelity bond proof message"""
+    arguments = [(b'takernick', Unicode()),
+                 (b'makernick', Unicode())]
 
 class JMAuthReceived(JMCommand):
     """Return the commitment and revelation

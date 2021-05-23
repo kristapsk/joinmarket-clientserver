@@ -13,7 +13,6 @@ from jmbase import (hextobin, is_hs_uri, get_tor_agent, JMHiddenService,
                     get_nontor_agent, BytesProducer, wrapped_urlparse,
                     bdict_sdict_convert, JMHTTPResource, bintohex)
 from jmbase.commands import *
-from jmbitcoin.fidelity_bond import FidelityBond
 from twisted.protocols import amp
 from twisted.internet import reactor, ssl, task
 from twisted.internet.protocol import ServerFactory
@@ -475,7 +474,7 @@ class JMDaemonServerProtocol(amp.AMP, OrderbookWatch):
         self.crypto_boxes = {}
         self.sig_lock = threading.Lock()
         self.active_orders = {}
-        self.fidelity_bond = None
+        self.use_fidelity_bond = False
 
     def checkClientResponse(self, response):
         """A generic check of client acceptance; any failure
@@ -553,7 +552,7 @@ class JMDaemonServerProtocol(amp.AMP, OrderbookWatch):
         return {'accepted': True}
 
     @JMSetup.responder
-    def on_JM_SETUP(self, role, offers, fidelity_bond):
+    def on_JM_SETUP(self, role, offers, use_fidelity_bond):
         assert self.jm_state == 0
         self.role = role
         self.crypto_boxes = {}
@@ -568,8 +567,7 @@ class JMDaemonServerProtocol(amp.AMP, OrderbookWatch):
             self.mcc.pubmsg(COMMAND_PREFIX + "orderbook")
         elif self.role == "MAKER":
             self.offerlist = json.loads(offers)
-            if fidelity_bond:
-                self.fidelity_bond = FidelityBond.deserialize(fidelity_bond)
+            self.use_fidelity_bond = use_fidelity_bond
             self.mcc.announce_orders(self.offerlist, None, None, None)
         self.jm_state = 1
         return {'accepted': True}
@@ -674,6 +672,12 @@ class JMDaemonServerProtocol(amp.AMP, OrderbookWatch):
             self.mcc.announce_orders(to_announce, None, None, None)
         return {"accepted": True}
 
+    @JMFidelityBondProof.responder
+    def on_JM_FIDELITY_BOND_PROOF(self, nick, proof):
+        """Called by maker client as a reply to a request of a fidelity bond proof"""
+        self.mcc.announce_orders(self.offerlist, nick, proof, new_mc=None)
+        return {"accepted": True}
+
     @JMIOAuth.responder
     def on_JM_IOAUTH(self, nick, utxolist, pubkey, cjaddr, changeaddr, pubkeysig):
         """Daemon constructs full !ioauth message to be sent on message
@@ -727,15 +731,16 @@ class JMDaemonServerProtocol(amp.AMP, OrderbookWatch):
     def on_orderbook_requested(self, nick, mc=None):
         """Dealt with by daemon, assuming offerlist is up to date
         """
-        if self.fidelity_bond:
+        if self.use_fidelity_bond:
             taker_nick = nick
             maker_nick = self.mcc.nick
-            proof = self.fidelity_bond.create_proof(maker_nick, taker_nick)
-            proof_msg = proof.create_proof_msg(self.fidelity_bond.cert_privkey)
+            d = self.callRemote(JMFidelityBondProofRequest,
+                takernick=taker_nick,
+                makernick=maker_nick)
+            self.defaultCallbacks(d)
         else:
-            proof_msg = None
-
-        self.mcc.announce_orders(self.offerlist, nick, proof_msg, mc)
+            self.mcc.announce_orders(self.offerlist, nick, fidelity_bond_proof_msg=None,
+                new_mc=mc)
 
     @maker_only
     def on_order_fill(self, nick, oid, amount, taker_pk, commit):

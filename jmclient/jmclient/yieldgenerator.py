@@ -16,7 +16,7 @@ from jmclient import (Maker, jm_single, load_program_config,
 from .wallet_utils import open_test_wallet_maybe, get_wallet_path
 from jmbase.support import EXIT_ARGERROR, EXIT_FAILURE, get_jm_version_str
 import jmbitcoin as btc
-from jmbitcoin.fidelity_bond import FidelityBond
+from jmclient.fidelity_bond import FidelityBond
 
 jlog = get_log()
 
