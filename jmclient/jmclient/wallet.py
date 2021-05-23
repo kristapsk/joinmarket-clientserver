@@ -405,9 +405,9 @@ class BaseWallet(object):
         """
         if self.TYPE == TYPE_P2PKH:
             return 'p2pkh'
-        elif self.TYPE in TYPE_P2SH_P2WPKH:
+        elif self.TYPE == TYPE_P2SH_P2WPKH:
             return 'p2sh-p2wpkh'
-        elif self.TYPE == (TYPE_P2WPKH,
+        elif self.TYPE in (TYPE_P2WPKH,
                 TYPE_SEGWIT_WALLET_FIDELITY_BONDS):
             return 'p2wpkh'
         assert False
