@@ -220,11 +220,18 @@ def cheapest_order_choose(orders, n):
     return orders[0]
 
 def fidelity_bond_weighted_order_choose(orders, n):
-    #choose orders randomly weighted by fidelity bond value
+    """
+    choose orders based on fidelity bond for improved sybil resistance
+
+    * with probability `bondless_makers_allowance` will revert to previous default
+      order choose (random_under_max_order_choose)
+    * with probability `1 - bondless_makers_allowance` if there are no bond offerings, revert
+      to previous default as above. If there are, choose randomly from those, with weighting
+      being the fidelity bond values.
+    """
 
     if random.random() < get_bondless_makers_allowance():
         return random_under_max_order_choose(orders, n)
-
     #remove orders without fidelity bonds
     filtered_orders = list(filter(lambda x: x[0]["fidelity_bond_value"] != 0, orders))
     if len(filtered_orders) == 0:
