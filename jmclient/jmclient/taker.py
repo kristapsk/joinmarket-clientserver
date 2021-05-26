@@ -13,6 +13,7 @@ from jmclient.support import (calc_cj_fee, weighted_order_choose, choose_orders,
 from jmclient.wallet import estimate_tx_fee, compute_tx_locktime, FidelityBondMixin
 from jmclient.podle import generate_podle, get_podle_commitments
 from jmclient.wallet_service import WalletService
+from jmclient.fidelity_bond import FidelityBondProof
 from .output import generate_podle_error_string
 from .cryptoengine import EngineError
 from .schedule import NO_ROUNDING
@@ -214,23 +215,26 @@ class Taker(object):
         interest_rate = get_interest_rate()
         blocks = jm_single().bc_interface.get_current_block_height()
         mediantime = jm_single().bc_interface.get_best_block_median_time()
-        validated_bonds = (FidelityBondMixin.get_validated_timelocked_fidelity_bond_utxo(
-            hextobin(fb["txid"]), fb["vout"], hextobin(fb["utxopubkey"]), fb["locktime"],
-            fb["certexpiry"], blocks)
-            for fb in fidelity_bonds_info)
+
+        parsed_bonds = [FidelityBondProof.parse_and_verify_proof_msg(fb["counterparty"],
+            fb["takernick"], fb["proof"]) for fb in fidelity_bonds_info]
+        validated_bonds = [FidelityBondMixin.get_validated_timelocked_fidelity_bond_utxo(
+            pb.utxo, pb.utxo_pub, pb.locktime, pb.cert_expiry, blocks)
+            for pb in parsed_bonds if pb != None]
+
         validated_fidelity_bond_data_with_dups = [(bond_data, utxo_data)
-            for bond_data, utxo_data in zip(fidelity_bonds_info, validated_bonds)
+            for bond_data, utxo_data in zip(parsed_bonds, validated_bonds)
             if utxo_data != None]
         #check for duplicated utxos i.e. two or more makers using the same UTXO
         # which is obviously not allowed, a fidelity bond must only be usable by one maker nick
         bond_utxo_set = set()
         validated_fidelity_bond_data = []
         for bond in validated_fidelity_bond_data_with_dups:
-            utxo_str = bond[0]["txid"] + ":" + str(bond[0]["vout"])
+            utxo_str = bond[0].utxo[0] + b":" + str(bond[0].utxo[1]).encode("ascii")
             if utxo_str not in bond_utxo_set:
                 validated_fidelity_bond_data.append(bond)
             bond_utxo_set.add(utxo_str)
-        fidelity_bond_values = dict([(bond_data["counterparty"],
+        fidelity_bond_values = dict([(bond_data.maker_nick,
             FidelityBondMixin.calculate_timelocked_fidelity_bond_value(
                 utxo_data["value"],
                 jm_single().bc_interface.get_block_time(
@@ -238,7 +242,7 @@ class Taker(object):
                         blocks - utxo_data["confirms"] + 1
                     )
                 ),
-                bond_data["locktime"],
+                bond_data.locktime,
                 mediantime,
                 interest_rate))
             for bond_data, utxo_data in validated_fidelity_bond_data])

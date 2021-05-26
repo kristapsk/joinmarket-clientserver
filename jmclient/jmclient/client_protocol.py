@@ -640,7 +640,7 @@ class JMTakerClientProtocol(JMClientProtocol):
         d = self.callRemote(commands.JMSetup,
                             role="TAKER",
                             offers="{}",
-                            fidelity_bond=b'')
+                            use_fidelity_bond=False)
         self.defaultCallbacks(d)
         return {'accepted': True}
 

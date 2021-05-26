@@ -597,13 +597,7 @@ class JMDaemonServerProtocol(amp.AMP, OrderbookWatch):
         string_orderbook = json.dumps(self.orderbook)
 
         fbond_rows = self.db.execute("SELECT * FROM fidelitybonds;").fetchall()
-        FIDELITY_BOND_KEYS = ["counterparty", "txid", "vout", "utxopubkey", "locktime", "certexpiry"]
-        fidelitybonds = [
-            dict(
-                [(k, o[k] if type(o[k]) != bytes else bintohex(o[k])) for k in FIDELITY_BOND_KEYS]
-            )
-            for o in fbond_rows
-        ]
+        fidelitybonds = [fb for fb in fbond_rows]
         string_fidelitybonds = json.dumps(fidelitybonds)
 
         log.msg("About to send orderbook (size=" + str(len(self.orderbook))
