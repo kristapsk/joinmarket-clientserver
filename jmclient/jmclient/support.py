@@ -223,9 +223,9 @@ def fidelity_bond_weighted_order_choose(orders, n):
     """
     choose orders based on fidelity bond for improved sybil resistance
 
-    * with probability `bondless_makers_allowance` will revert to previous default
+    * with probability `bondless_makers_allowance`: will revert to previous default
       order choose (random_under_max_order_choose)
-    * with probability `1 - bondless_makers_allowance` if there are no bond offerings, revert
+    * with probability `1 - bondless_makers_allowance`: if there are no bond offerings, revert
       to previous default as above. If there are, choose randomly from those, with weighting
       being the fidelity bond values.
     """
