@@ -395,7 +395,7 @@ class JMMakerClientProtocol(JMClientProtocol):
         d = self.callRemote(commands.JMSetup,
                             role="MAKER",
                             offers=json.dumps(self.client.offerlist),
-                            use_fidelity_bond=(self.client.fidelity_bond != None))
+                            use_fidelity_bond=(self.client.fidelity_bond is not None))
         self.defaultCallbacks(d)
 
     @commands.JMSetupDone.responder
