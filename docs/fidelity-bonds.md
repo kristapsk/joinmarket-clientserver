@@ -32,7 +32,7 @@ bonds](https://gist.github.com/chris-belcher/18ea0e6acdb885a2bfbdee43dcd6b5af/)
 
 ## How to use fidelity bonds as a taker
 
-In JoinMarket versions later than v0.9 takers will by default use fidelity bonds
+In JoinMarket version v0.9 or later takers will by default use fidelity bonds
 without any input needed from the user.
 
 The orderbook watcher script now displays information about any fidelity bonds
