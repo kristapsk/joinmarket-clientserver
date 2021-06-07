@@ -976,7 +976,8 @@ def calculate_fidelity_bond_values(fidelity_bonds_info):
         utxo_data = FidelityBondMixin.get_validated_timelocked_fidelity_bond_utxo(
             fb_proof.utxo, fb_proof.utxo_pub, fb_proof.locktime,
             fb_proof.cert_expiry, blocks)
-        validated_bonds[fb_proof.utxo] = (fb_proof, utxo_data)
+        if utxo_data is not None:
+            validated_bonds[fb_proof.utxo] = (fb_proof, utxo_data)
 
     fidelity_bond_values = {
         bond_data.maker_nick:
