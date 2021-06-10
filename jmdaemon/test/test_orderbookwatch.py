@@ -260,16 +260,20 @@ def test_fidelity_bond_seen(valid, fidelity_bond_proof, maker_nick, taker_nick):
     ob.msgchan.nick = taker_nick
     ob.on_fidelity_bond_seen(maker_nick, fidelity_bond_cmd_list[0], serialized)
     rows = ob.db.execute("SELECT * FROM fidelitybonds;").fetchall()
+    assert len(rows) == 1
+    assert rows[0]["counterparty"] == maker_nick
+    assert rows[0]["takernick"] == taker_nick
+    parsed_proof = FidelityBondProof.parse_and_verify_proof_msg(rows[0]["counterparty"],
+        rows[0]["takernick"], rows[0]["proof"])
     if valid:
-        assert len(rows) == 1
-        assert rows[0]["counterparty"] == maker_nick
-        assert rows[0]["vout"] == fidelity_bond_proof["vout"]
-        assert rows[0]["locktime"] == fidelity_bond_proof["locktime"]
-        assert rows[0]["certexpiry"] == fidelity_bond_proof["certificate-expiry"]
-        assert rows[0]["txid"] == hextobin(fidelity_bond_proof["txid"])
-        assert rows[0]["utxopubkey"] == hextobin(fidelity_bond_proof["utxo-pubkey"])
+        assert parsed_proof is not None
+        assert parsed_proof.utxo[0] == hextobin(fidelity_bond_proof["txid"])
+        assert parsed_proof.utxo[1] == fidelity_bond_proof["vout"]
+        assert parsed_proof.locktime == fidelity_bond_proof["locktime"]
+        assert parsed_proof.cert_expiry == fidelity_bond_proof["certificate-expiry"]
+        assert parsed_proof.utxo_pub == hextobin(fidelity_bond_proof["utxo-pubkey"])
     else:
-        assert len(rows) == 0
+        assert parsed_proof is None
 
 def test_duplicate_fidelity_bond_rejected():
 
