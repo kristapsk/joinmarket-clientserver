@@ -963,6 +963,8 @@ def round_to_significant_figures(d, sf):
     raise RuntimeError()
 
 def calculate_fidelity_bond_values(fidelity_bonds_info):
+    if len(fidelity_bonds_info) == 0:
+        return {}
     interest_rate = get_interest_rate()
     blocks = jm_single().bc_interface.get_current_block_height()
     mediantime = jm_single().bc_interface.get_best_block_median_time()
