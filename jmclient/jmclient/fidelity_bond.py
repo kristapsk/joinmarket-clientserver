@@ -117,8 +117,12 @@ class FidelityBondProof:
         decoded_data = base64.b64decode(data)
 
         unpacked_data = struct.unpack(cls.SER_STUCT_FMT, decoded_data)
-        signature = unpacked_data[0][unpacked_data[0].index(b'\x30'):]
-        cert_sig = unpacked_data[1][unpacked_data[1].index(b'\x30'):]
+        try:
+            signature = unpacked_data[0][unpacked_data[0].index(b'\x30'):]
+            cert_sig = unpacked_data[1][unpacked_data[1].index(b'\x30'):]
+        except ValueError:
+            #raised if index() doesnt find the position
+            return None
         proof = cls(maker_nick, taker_nick, unpacked_data[2], unpacked_data[3],
                     cert_sig, (unpacked_data[5], unpacked_data[6]),
                     unpacked_data[4], unpacked_data[7])
