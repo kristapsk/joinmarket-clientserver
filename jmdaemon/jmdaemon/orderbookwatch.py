@@ -140,8 +140,8 @@ class OrderbookWatch(object):
         taker_nick = self.msgchan.nick
         maker_nick = nick
         if not fidelity_bond_sanity_check.fidelity_bond_sanity_check(fidelity_bond_proof_msg):
-            log.debug("Failed to verify fidelity bond for {}, skipping. Error: {}"
-                      .format(maker_nick, e))
+            log.debug("Failed to verify fidelity bond for {}, skipping."
+                      .format(maker_nick))
             return
         try:
             self.dblock.acquire(True)

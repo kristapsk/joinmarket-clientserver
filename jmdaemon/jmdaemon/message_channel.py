@@ -3,13 +3,12 @@ import abc
 import base64
 import binascii
 import threading
-import struct
 from twisted.internet import reactor
 from jmdaemon import encrypt_encode, decode_decrypt, COMMAND_PREFIX,\
     NICK_HASH_LENGTH, NICK_MAX_ENCODED, plaintext_commands,\
     encrypted_commands, commitment_broadcast_list, offername_list,\
     fidelity_bond_cmd_list
-from jmbase.support import get_log, hextobin
+from jmbase.support import get_log
 from functools import wraps
 
 log = get_log()

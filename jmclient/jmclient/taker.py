@@ -7,7 +7,7 @@ from twisted.internet import reactor, task
 
 import jmbitcoin as btc
 from jmclient.configure import jm_single, validate_address, get_interest_rate
-from jmbase import get_log, bintohex, hexbin, hextobin
+from jmbase import get_log, bintohex, hexbin
 from jmclient.support import (calc_cj_fee, weighted_order_choose, choose_orders,
                               choose_sweep_orders)
 from jmclient.wallet import estimate_tx_fee, compute_tx_locktime, FidelityBondMixin

@@ -3,7 +3,7 @@
 import pytest
 
 from jmdaemon.orderbookwatch import OrderbookWatch
-from jmdaemon import IRCMessageChannel, MessageChannelCollection, fidelity_bond_cmd_list
+from jmdaemon import IRCMessageChannel, fidelity_bond_cmd_list
 from jmclient import get_irc_mchannels, load_test_config
 from jmdaemon.protocol import JM_VERSION, ORDER_KEYS
 from jmbase.support import hextobin

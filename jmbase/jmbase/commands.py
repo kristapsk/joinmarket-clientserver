@@ -3,7 +3,7 @@ Commands defining client-server (daemon)
 messaging protocol (*not* Joinmarket p2p protocol).
 Used for AMP asynchronous messages.
 """
-from twisted.protocols.amp import Boolean, Command, Integer, Unicode, String
+from twisted.protocols.amp import Boolean, Command, Integer, Unicode
 from .bigstring import BigUnicode
 
 
