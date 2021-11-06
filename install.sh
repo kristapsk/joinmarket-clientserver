@@ -87,7 +87,9 @@ tor_deps_install ()
         'libssl-dev' \
         'zlib1g-dev' )
 
-    # TODO: darwin_deps
+    darwin_deps=( \
+        'libevent' \
+        'zlib' )
 
     if [[ ${use_os_deps_check} != '1' ]]; then
         return 0
@@ -95,8 +97,8 @@ tor_deps_install ()
         deb_deps_install "${debian_deps[@]}"
         return "$?"
     elif [[ ${install_os} == 'darwin' ]]; then
-        echo "FixMe: Darwin deps not specified. Trying to build."
-        return 0
+        dar_deps_install "${darwin_deps[@]}"
+        return "$?"
     else
         return 0
     fi
@@ -129,13 +131,16 @@ dar_deps_install ()
     if ! brew install ${dar_deps[@]}; then
         return 1
     fi
-    echo "
-        sudo password required to run :
 
-        \`sudo pip3 install virtualenv\`
-        "
-    if ! sudo pip3 install virtualenv; then
-        return 1
+    if ! which virtualenv >/dev/null; then
+        echo "
+            sudo password required to run :
+
+            \`sudo pip3 install virtualenv\`
+            "
+        if ! sudo pip3 install virtualenv; then
+            return 1
+        fi
     fi
 }
 
