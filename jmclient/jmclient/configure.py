@@ -630,7 +630,7 @@ def load_program_config(config_path="", bs=None, plugin_services=[]):
     # we set the global home directory, but keep the config_path variable
     # for callers of this function:
     global_singleton.datadir = config_path
-    jmprint("User data location: " + global_singleton.datadir, "info")
+    #jmprint("User data location: " + global_singleton.datadir, "info")
     if not os.path.exists(global_singleton.datadir):
         os.makedirs(global_singleton.datadir)
     # prepare folders for wallets and logs
