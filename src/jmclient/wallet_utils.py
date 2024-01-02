@@ -21,7 +21,7 @@ from jmclient.wallet import SegwitLegacyWatchonlyWallet, SegwitWatchonlyWallet, 
 from jmclient.wallet_service import WalletService
 from jmbase.support import (get_password, jmprint, EXIT_FAILURE,
                             EXIT_ARGERROR, utxo_to_utxostr, hextobin, bintohex,
-                            IndentedHelpFormatterWithNL)
+                            IndentedHelpFormatterWithNL, dict_factory)
 
 from .cryptoengine import TYPE_P2PKH, TYPE_P2SH_P2WPKH, TYPE_P2WPKH, \
     TYPE_SEGWIT_WALLET_FIDELITY_BONDS
@@ -815,13 +815,6 @@ def wallet_change_passphrase(walletservice,
     if passphrase:
         walletservice.change_wallet_passphrase(passphrase)
         return True
-
-
-def dict_factory(cursor, row):
-    d = {}
-    for idx, col in enumerate(cursor.description):
-        d[col[0]] = row[idx]
-    return d
 
 
 def wallet_fetch_history(wallet, options):
