@@ -2,7 +2,8 @@
 
 import pytest
 from jmclient import load_test_config, jm_single
-from jmclient.configure import get_blockchain_interface_instance
+from jmclient.configure import get_blockchain_interface_instance, \
+    get_tx_cache_location
 
 pytestmark = pytest.mark.usefixtures("setup_regtest_bitcoind")
 
@@ -35,3 +36,7 @@ def test_blockchain_sources():
         else:
             get_blockchain_interface_instance(jm_single().config)
     load_test_config()
+
+
+def test_get_tx_cache_location():
+    assert get_tx_cache_location() == ":memory:"

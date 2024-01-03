@@ -329,13 +329,12 @@ class WalletService(Service):
             if txid in seen_txids:
                 continue
             seen_txids.add(txid)
-            res = self.bci.get_transaction(hextobin(txid))
+            # Important to skip cache here, "details" field is not cached and
+            # it is also node specific, while tx cache itself isn't.
+            res = self.bci.get_transaction(txid, use_cache=False)
             if not res:
                 continue
-            confs = res["confirmations"]
-            if not isinstance(confs, Integral):
-                jlog.warning("Malformed gettx result: " + str(res))
-                continue
+            confs = self.bci.get_transaction_confirmations(res)
             if confs < 0:
                 jlog.info(
                     "Transaction: " + txid + " has a conflict, abandoning.")
@@ -769,13 +768,14 @@ class WalletService(Service):
                 if tx['category'] == 'receive':
                     tx_receive.append(tx)
                 elif tx["category"] == "send":
-                    gettx = self.bci.get_transaction(hextobin(tx["txid"]))
+                    gettx = self.bci.get_transaction(tx["txid"])
                     txd = self.bci.get_deser_from_gettransaction(gettx)
                     if len(txd.vout) > 1:
                         continue
                     #must be mined into a block to sync
                     #otherwise there's no merkleproof or block index
-                    if gettx["confirmations"] < 1:
+                    confs = self.bci.get_transaction_confirmations(gettx)
+                    if confs < 1:
                         continue
                     script = txd.vout[0].scriptPubKey
                     if script[0] != 0x6a: #OP_RETURN

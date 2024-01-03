@@ -6,7 +6,7 @@ import time
 import numbers
 from typing import Callable, Optional, Union
 
-from jmbase import get_log, jmprint, bintohex, hextobin
+from jmbase import get_log, jmprint, bintohex
 from .configure import jm_single, validate_address, is_burn_destination
 from .schedule import human_readable_schedule_entry, tweak_tumble_schedule,\
     schedule_to_text
@@ -265,22 +265,23 @@ def get_total_tumble_amount(mixdepth_balance_dict, schedule):
     assert total_tumble_amount > 0, "no coins to tumble."
     return total_tumble_amount
 
-def restart_wait(txid):
+def restart_wait(txid: str) -> bool:
     """ Returns true only if the transaction txid is seen in the wallet,
     and confirmed (it must be an in-wallet transaction since it always
     spends coins from the wallet).
     """
-    res = jm_single().bc_interface.get_transaction(hextobin(txid))
+    res = jm_single().bc_interface.get_transaction(txid)
     if not res:
         return False
-    if res["confirmations"] == 0:
+    confirmations = jm_single().bc_interface.get_transaction_confirmations(res)
+    if confirmations == 0:
         return False
-    if res["confirmations"] < 0:
+    if confirmations < 0:
         log.warn("Tx: " + txid + " has a conflict, abandoning.")
         sys.exit(EXIT_SUCCESS)
     else:
         log.debug("Tx: " + str(txid) + " has " + str(
-                res["confirmations"]) + " confirmations.")
+                confirmations) + " confirmations.")
         return True
 
 def restart_waiter(txid):

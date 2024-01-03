@@ -887,6 +887,7 @@ def wallet_fetch_history(wallet, options):
     deposit_times = []
     tx_number = 0
     tx_cache = {}
+    persistent_tx_cache = jm_single().tx_cache
     for tx in txes:
         is_coinjoin, cj_amount, cj_n, output_script_values, blocktime, txd =\
             get_tx_info(hextobin(tx['txid']), tx_cache=tx_cache)
@@ -897,23 +898,28 @@ def wallet_fetch_history(wallet, options):
 
         our_output_scripts = wallet_script_set.intersection(
             output_script_values.keys())
-        rpc_inputs = []
-        for ins in txd.vin:
-            if ins.prevout.hash[::-1] in tx_cache:
-                wallet_tx, wallet_tx_deser = tx_cache[ins.prevout.hash[::-1]]
-            else:
-                wallet_tx = jm_single().bc_interface.get_transaction(
-                    ins.prevout.hash[::-1])
-                if wallet_tx:
-                    wallet_tx_deser = btc.CMutableTransaction.deserialize(
+        rpc_inputs = persistent_tx_cache.get_tx_our_inputs(
+            wallet.get_wallet_id(), tx['txid'])
+        if len(rpc_inputs) == 0:
+            for ins in txd.vin:
+                if ins.prevout.hash[::-1] in tx_cache:
+                    wallet_tx, wallet_tx_deser = tx_cache[ins.prevout.hash[::-1]]
+                else:
+                    wallet_tx = jm_single().bc_interface.get_transaction(
+                        ins.prevout.hash[::-1])
+                    if wallet_tx:
+                        wallet_tx_deser = btc.CMutableTransaction.deserialize(
                         hextobin(wallet_tx['hex']))
-                    tx_cache[ins.prevout.hash[::-1]] = (wallet_tx,
-                                                        wallet_tx_deser)
-            if wallet_tx is None:
-                continue
-            inp = wallet_tx_deser.vout[ins.prevout.n]
-            input_dict = {"script": inp.scriptPubKey, "value": inp.nValue}
-            rpc_inputs.append(input_dict)
+                        tx_cache[ins.prevout.hash[::-1]] = (wallet_tx,
+                                                            wallet_tx_deser)
+                if wallet_tx is None:
+                    continue
+                inp = wallet_tx_deser.vout[ins.prevout.n]
+                input_dict = {"script": inp.scriptPubKey, "value": inp.nValue}
+                rpc_inputs.append(input_dict)
+            persistent_tx_cache.add_tx_our_inputs(
+                wallet.get_wallet_id(), tx['txid'], rpc_inputs)
+
         rpc_input_scripts = set(ind['script'] for ind in rpc_inputs)
         our_input_scripts = wallet_script_set.intersection(rpc_input_scripts)
         our_input_values = [

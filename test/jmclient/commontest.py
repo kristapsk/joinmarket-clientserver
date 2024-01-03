@@ -56,7 +56,7 @@ class DummyBlockchainInterface(BlockchainInterface):
         pass
     def get_deser_from_gettransaction(self, rpcretval: dict) -> Optional[btc.CMutableTransaction]:
         pass
-    def get_transaction(self, txid: bytes) -> Optional[dict]:
+    def _get_transaction_impl(self, txid: Union[bytes, str]) -> Optional[dict]:
         pass
     def get_block(self, blockheight: int) -> Optional[str]:
         pass

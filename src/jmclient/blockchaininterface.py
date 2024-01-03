@@ -24,7 +24,7 @@ log = get_log()
 class BlockchainInterface(ABC):
 
     def __init__(self) -> None:
-        pass
+        self.tx_cache = jm_single().tx_cache;
 
     @abstractmethod
     def is_address_imported(self, addr: str) -> bool:
@@ -89,19 +89,49 @@ class BlockchainInterface(ABC):
         skipping some.
         """
 
-    @abstractmethod
-    def get_deser_from_gettransaction(self, rpcretval: dict) -> Optional[btc.CMutableTransaction]:
+    def get_deser_from_gettransaction(self, gtretval: dict) -> Optional[
+            btc.CMutableTransaction]:
         """Get full transaction deserialization from a call
         to get_transaction().
         """
+        if not "hex" in gtretval:
+            log.error(f"Malformed get_transaction output: {gtretval}")
+            return None
+        return btc.CMutableTransaction.deserialize(
+            hextobin(gtretval["hex"]))
+
+    def get_transaction(self, txid: Union[bytes, str],
+                        use_cache: bool = True) -> Optional[dict]:
+        """ Argument txid can be either binary or hex string.
+        Returns a serialized transaction for txid txid,
+        in hex as a subset of values returned by Bitcoin Core rpc, or None
+        if no transaction can be retrieved.
+        """
+        if isinstance(txid, bytes):
+            txid = bintohex(txid)
+        assert isinstance(txid, str)
+        if use_cache:
+            cached_tx = self.tx_cache.get_transaction(txid)
+            if cached_tx:
+                return cached_tx
+        bci_tx = self._get_transaction_impl(txid)
+        if bci_tx:
+            # don't cache before at least 3 confirmations to handle reorgs
+            if use_cache and bci_tx["confirmations"] >= 3:
+                self.tx_cache.add_transaction(bci_tx)
+        return bci_tx
+
+    def get_transaction_confirmations(self, gtretval: dict) -> int:
+        if "confirmations" in gtretval:
+            return gtretval["confirmations"]
+        elif "blockheight" in gtretval:
+            return self.get_current_block_height() - gtretval["blockheight"]
+        else:
+            return 0
 
     @abstractmethod
-    def get_transaction(self, txid: bytes) -> Optional[dict]:
-        """ Argument txid is passed in binary.
-        Returns a serialized transaction for txid txid,
-        in hex as returned by Bitcoin Core rpc, or None
-        if no transaction can be retrieved. Works also for
-        watch-only wallets.
+    def _get_transaction_impl(self, txid: bytes) -> Optional[dict]:
+        """Implementation of get_transaction().
         """
 
     @abstractmethod
@@ -497,20 +527,12 @@ class BitcoinCoreInterface(BlockchainInterface):
             self.import_addresses(addresses - imported_addresses, wallet_name)
         return import_needed
 
-    def get_deser_from_gettransaction(self, rpcretval: dict) -> Optional[btc.CMutableTransaction]:
-        if not "hex" in rpcretval:
-            log.info("Malformed gettransaction output")
-            return None
-        return btc.CMutableTransaction.deserialize(
-            hextobin(rpcretval["hex"]))
-
     def list_transactions(self, num: int, skip: int = 0) -> List[dict]:
         return self._rpc("listtransactions", ["*", num, skip, True])
 
-    def get_transaction(self, txid: bytes) -> Optional[dict]:
-        htxid = bintohex(txid)
+    def _get_transaction_impl(self, txid: str) -> Optional[dict]:
         try:
-            res = self._rpc("gettransaction", [htxid, True])
+            res = self._rpc("gettransaction", [txid, True])
         except JsonRpcError as e:
             #This should never happen (gettransaction is a wallet rpc).
             log.warn("Failed gettransaction call; JsonRpcError: " + repr(e))
@@ -637,7 +659,7 @@ class BitcoinCoreInterface(BlockchainInterface):
     def get_tx_merkle_branch(self, txid: str,
                              blockhash: Optional[str] = None) -> bytes:
         if not blockhash:
-            tx = self._rpc("gettransaction", [txid])
+            tx = self.get_transaction(txid, use_cache=False)
             if tx["confirmations"] < 1:
                 raise ValueError("Transaction not in block")
             blockhash = tx["blockhash"]

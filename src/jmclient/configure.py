@@ -16,6 +16,7 @@ from jmbase.support import (get_log, joinmarket_alert, core_alert, debug_silence
                             JM_APP_NAME, lookup_appdata_folder, EXIT_FAILURE)
 from jmclient.jsonrpc import JsonRpc
 from jmclient.podle import set_commitment_file
+from jmclient.transactioncache import TransactionCache
 
 log = get_log()
 
@@ -69,6 +70,7 @@ global_singleton.nickname = None
 global_singleton.BITCOIN_DUST_THRESHOLD = btc.DUST_THRESHOLD
 global_singleton.DUST_THRESHOLD = 10 * global_singleton.BITCOIN_DUST_THRESHOLD
 global_singleton.bc_interface = None
+global_singleton.tx_cache = None
 global_singleton.maker_timeout_sec = 60
 global_singleton.debug_file_handle = None
 global_singleton.core_alert = core_alert
@@ -672,6 +674,16 @@ def get_network() -> str:
     """Returns network name"""
     return global_singleton.config.get("BLOCKCHAIN", "network")
 
+def get_tx_cache_location() -> str:
+    network = get_network()
+    # you don't want permanent tx cache storage when testing
+    if "pytest" in sys.modules or (network == "testnet" and \
+       global_singleton.config.get("BLOCKCHAIN", "blockchain_source") == "regtest"):
+        return ":memory:"
+    else:
+        return os.path.join(global_singleton.datadir,
+                            f"txcache-{network}.sqlite")
+
 def validate_address(addr: str) -> Tuple[bool, str]:
     try:
         # automatically respects the network
@@ -767,6 +779,8 @@ def load_program_config(config_path: str = "", bs: Optional[str] = None,
     except NoOptionError: #pragma: no cover
         log.debug('TIMEOUT/maker_timeout_sec not found in .cfg file, '
                   'using default value')
+
+    global_singleton.tx_cache = TransactionCache(get_tx_cache_location())
 
     # configure the interface to the blockchain on startup
     global_singleton.bc_interface = get_blockchain_interface_instance(
