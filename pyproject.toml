@@ -19,7 +19,7 @@ dependencies = [
 
 [project.optional-dependencies]
 jmbitcoin = [
-    "python-bitcointx==1.1.4",
+    "python-bitcointx @ https://github.com/Simplexum/python-bitcointx/archive/refs/heads/fix_witness_version.zip",
 ]
 jmclient = [
     "argon2_cffi==21.3.0",
