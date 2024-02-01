@@ -31,9 +31,11 @@ jobs:
 #          path: jmvenv
 #          key: ${{ runner.os }}-${{ matrix.python-version }}-${{ env.cache-name }}-${{ hashFiles('requirements/*.txt', 'install.sh', '*/setup.py') }}
       - name: Setup joinmarket + virtualenv
+        env:
+          WITH_QT: ${{ runner.os != 'macos-14' && '--with-qt' || '' }}
         if: steps.cache-venv.outputs.cache-hit != 'true'
         run: |
-          ./install.sh --develop --with-qt
+          ./install.sh --develop ${{ env.WITH_QT }}
           ./jmvenv/bin/python -m pip install --upgrade pip
       - name: Lint with flake8
         run: source ./jmvenv/bin/activate && ./test/lint/lint-python.sh
