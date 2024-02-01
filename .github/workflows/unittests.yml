@@ -32,7 +32,7 @@ jobs:
 #          key: ${{ runner.os }}-${{ matrix.python-version }}-${{ env.cache-name }}-${{ hashFiles('requirements/*.txt', 'install.sh', '*/setup.py') }}
       - name: Setup joinmarket + virtualenv
         env:
-          WITH_QT: ${{ runner.os != 'macos-14' && '--with-qt' || '' }}
+          WITH_QT: ${{ matrix.os != 'macos-14' && '--with-qt' || '' }}
         if: steps.cache-venv.outputs.cache-hit != 'true'
         run: |
           ./install.sh --develop ${{ env.WITH_QT }}
