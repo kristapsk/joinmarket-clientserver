@@ -3,6 +3,7 @@
 # We don't check validity of Bitcoin address here, as all the tools using
 # this are expected to do address validation independently anyway.
 
+from decimal import Decimal
 from jmbitcoin import amount_to_sat
 from typing import Dict, List, Tuple, Union
 from urllib.parse import parse_qsl, quote, unquote_plus, urlencode, urlparse
@@ -44,11 +45,14 @@ def decode_bip21_uri(uri: str) -> Dict[str, Union[str, int]]:
 
 
 def encode_bip21_uri(address: str,
-                     params: Union[dict, List[Tuple[str, Union[float, int, str]]]],
+                     params: Union[dict, List[Tuple[str, Union[Decimal, float, int, str]]]],
                      safe: str = "") -> str:
     uri = 'bitcoin:' + address
     if len(params) > 0:
         if 'amount' in params:
             _validate_bip21_amount(params['amount'])
+            # Remove unnecessary trailing zeroes from amount
+            if "." in str(params["amount"]):
+                params["amount"] = str(params["amount"]).rstrip("0")
         uri += '?' + urlencode(params, safe=safe, quote_via=quote)
     return uri
