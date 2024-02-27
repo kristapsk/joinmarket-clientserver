@@ -565,7 +565,7 @@ def get_mchannels(mode: str = "TAKER") -> list:
     onion_fields = [("type", str), ("directory_nodes", str), ("regtest_count", str),
                     ("socks5_host", str), ("socks5_port", int),
                     ("tor_control_host", str), ("tor_control_port", int),
-                    ("onion_serving_host", str), ("onion_serving_port", int),
+                    ("onion_serving_host", str), ("onion_serving_port", str),
                     ("hidden_service_dir", str)]
 
     def get_irc_section(s):

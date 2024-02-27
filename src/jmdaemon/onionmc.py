@@ -1,8 +1,6 @@
-from jmdaemon.message_channel import MessageChannel
-from jmdaemon.protocol import COMMAND_PREFIX, JM_VERSION
-from jmbase import get_log,  JM_APP_NAME, JMHiddenService, stop_reactor
-import json
+
 import copy
+import json
 import random
 from typing import Callable, Union, Tuple, List
 from twisted.internet import reactor, task, protocol
@@ -12,6 +10,11 @@ from twisted.internet.endpoints import TCP4ClientEndpoint
 from twisted.internet.address import IPv4Address, IPv6Address
 from txtorcon.socks import (TorSocksEndpoint, HostUnreachableError,
                             SocksError, GeneralServerFailureError)
+
+from jmbase import get_log, JM_APP_NAME, JMHiddenService, stop_reactor
+from jmbase.support import get_free_tcp_ports
+from jmdaemon.message_channel import MessageChannel
+from jmdaemon.protocol import COMMAND_PREFIX, JM_VERSION
 
 log = get_log()
 
@@ -644,7 +647,10 @@ class OnionMessageChannel(MessageChannel):
         self.onion_serving_host=configdata["onion_serving_host"]
         self.onion_serving = configdata["serving"]
         if self.onion_serving:
-            self.onion_serving_port = configdata["onion_serving_port"]
+            if configdata["onion_serving_port"] == "auto":
+                self.onion_serving_port = get_free_tcp_ports(1)[0]
+            else:
+                self.onion_serving_port = configdata["onion_serving_port"]
             self.hidden_service_dir = configdata["hidden_service_dir"]
         # client side config:
         self.socks5_host = configdata["socks5_host"]
